@@ -1,0 +1,27 @@
+{
+  "name": "Jobs",
+  "dockerFile": "./Dockerfile",
+  "remoteUser": "ubuntu",
+  "forwardPorts": [8000, 5173],
+  "portsAttributes": {
+    "8000": {
+      "label": "Application",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "Vite",
+      "onAutoForward": "silent"
+    }
+  },
+  "postStartCommand": "sudo supervisord -c /etc/supervisor/supervisord.conf || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "laravel.vscode-laravel",
+        "open-southeners.laravel-pint",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}
