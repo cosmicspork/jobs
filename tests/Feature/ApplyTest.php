@@ -12,7 +12,7 @@ it('creates an application and dispatches generation jobs', function () {
     $listing = Listing::factory()->scored()->create();
 
     $this->post(route('apply', $listing))
-        ->assertRedirect(route('feed'));
+        ->assertRedirect(route('filament.admin.resources.listings.view', $listing));
 
     expect(Application::count())->toBe(1);
 
@@ -33,6 +33,6 @@ it('redirects with status message', function () {
     $listing = Listing::factory()->scored()->create(['company' => 'Acme Corp']);
 
     $this->post(route('apply', $listing))
-        ->assertRedirect(route('feed'))
+        ->assertRedirect(route('filament.admin.resources.listings.view', $listing))
         ->assertSessionHas('status', 'Generating application for Acme Corp...');
 });
