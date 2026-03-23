@@ -32,7 +32,7 @@ RUN apt-get update && apt-get upgrade -y \
        > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
     && apt-get install -y \
-       zip unzip git supervisor sudo sqlite3 \
+       zip unzip git gh supervisor sudo sqlite3 \
        libcap2-bin libgd3 libpng-dev librsvg2-bin \
        python3 dnsutils fswatch ffmpeg nano locales \
        nodejs \
