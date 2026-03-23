@@ -63,7 +63,11 @@ class HnHiringScraper implements ScraperInterface
         $url = $linkNode ? $linkNode->getAttribute('href') : "https://news.ycombinator.com/item?id={$hnId}";
 
         $html = $comment->ownerDocument->saveHTML($comment);
-        $text = strip_tags(html_entity_decode($html));
+        $decoded = html_entity_decode($html);
+        $decoded = preg_replace('/<br\s*\/?>/i', "\n", $decoded);
+        $decoded = preg_replace('/<\/p>\s*<p>/i', "\n\n", $decoded);
+        $decoded = preg_replace('/<\/?p>/i', "\n", $decoded);
+        $text = strip_tags($decoded);
         $text = preg_replace('/\s*×\s*/', '', $text);
         $text = trim(preg_replace('/by \S+\s*Original Post.*?UTC\s*(Prev\s*\|?\s*)?(Next\s*)?\s*/s', '', $text));
 
@@ -72,7 +76,15 @@ class HnHiringScraper implements ScraperInterface
         }
 
         $firstLine = Str::before($text, "\n");
-        $company = trim(Str::before($firstLine, '|'));
+        $parts = array_map('trim', explode('|', $firstLine));
+
+        if (count($parts) >= 2) {
+            $company = $parts[0];
+            $title = $parts[1];
+        } else {
+            $company = 'Unknown';
+            $title = $firstLine;
+        }
 
         if (empty($company)) {
             $company = 'Unknown';
@@ -82,7 +94,7 @@ class HnHiringScraper implements ScraperInterface
         $salary = $this->parseSalary($text);
 
         return [
-            'title' => Str::limit($firstLine, 200),
+            'title' => Str::limit($title, 200),
             'company' => Str::limit($company, 100),
             'url' => $url,
             'description' => $text,
