@@ -16,7 +16,7 @@ trait ParsesSalary
             ];
         }
 
-        if (preg_match('/(\d{3}),?000\s*[-–—]\s*(\d{3}),?000/', $text, $matches)) {
+        if (preg_match('/\$?(\d{2,3}),?000\s*[-–—]\s*\$?(\d{2,3}),?000/', $text, $matches)) {
             return [
                 'min' => (int) $matches[1] * 1000,
                 'max' => (int) $matches[2] * 1000,

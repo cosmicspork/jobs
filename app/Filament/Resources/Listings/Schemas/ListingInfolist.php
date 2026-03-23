@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Listings\Schemas;
 
+use App\Relevance;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -41,17 +42,13 @@ class ListingInfolist
                             ->formatStateUsing(fn (?string $state): string => nl2br(e($state ?? '')))
                             ->placeholder('No description'),
                     ]),
-                Section::make('Score')
+                Section::make('Relevance')
                     ->columns(2)
                     ->schema([
-                        TextEntry::make('score')
+                        TextEntry::make('relevance')
                             ->badge()
-                            ->color(fn (?int $state): string => match (true) {
-                                $state === null => 'gray',
-                                $state >= 80 => 'success',
-                                $state >= 60 => 'warning',
-                                default => 'danger',
-                            }),
+                            ->formatStateUsing(fn (?Relevance $state): string => $state?->label() ?? 'Unscored')
+                            ->color(fn (?Relevance $state): string => $state?->color() ?? 'gray'),
                         TextEntry::make('scored_at')
                             ->since()
                             ->placeholder('Not scored'),

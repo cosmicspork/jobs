@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Relevance;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,7 +24,7 @@ class Listing extends Model
         'remote',
         'board',
         'raw_data',
-        'score',
+        'relevance',
         'score_data',
         'scored_at',
         'scraped_at',
@@ -46,6 +47,7 @@ class Listing extends Model
         return [
             'raw_data' => 'array',
             'score_data' => 'array',
+            'relevance' => Relevance::class,
             'remote' => 'boolean',
             'scored_at' => 'datetime',
             'scraped_at' => 'datetime',

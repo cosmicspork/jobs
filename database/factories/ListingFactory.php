@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Listing;
+use App\Relevance;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -31,15 +32,14 @@ class ListingFactory extends Factory
         ];
     }
 
-    public function scored(int $score = 85): static
+    public function scored(Relevance $relevance = Relevance::Relevant): static
     {
         return $this->state(fn () => [
-            'score' => $score,
+            'relevance' => $relevance,
             'score_data' => [
                 'matched_skills' => ['PHP', 'Laravel'],
                 'gaps' => ['Go'],
                 'reasoning' => 'Good match for a Laravel developer.',
-                'salary_match' => true,
             ],
             'scored_at' => now(),
         ]);

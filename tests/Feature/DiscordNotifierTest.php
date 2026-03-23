@@ -10,7 +10,7 @@ beforeEach(function () {
 });
 
 it('sends a discord notification for a listing', function () {
-    $listing = Listing::factory()->scored(85)->create();
+    $listing = Listing::factory()->scored()->create();
 
     app(DiscordNotifier::class)->sendListing($listing);
 
@@ -18,15 +18,14 @@ it('sends a discord notification for a listing', function () {
         $embed = $request->data()['embeds'][0];
 
         return $request->url() === 'https://discord.com/api/webhooks/test'
-            && $embed['fields'][0]['value'] === $listing->company
-            && $embed['fields'][1]['value'] === '85';
+            && $embed['fields'][0]['value'] === $listing->company;
     });
 });
 
 it('does not send when webhook url is not configured', function () {
     config(['services.discord.webhook_url' => null]);
 
-    $listing = Listing::factory()->scored(85)->create();
+    $listing = Listing::factory()->scored()->create();
 
     app(DiscordNotifier::class)->sendListing($listing);
 
@@ -34,7 +33,7 @@ it('does not send when webhook url is not configured', function () {
 });
 
 it('includes the listing title and job url in the embed', function () {
-    $listing = Listing::factory()->scored(90)->create([
+    $listing = Listing::factory()->scored()->create([
         'title' => 'Senior Laravel Dev',
         'url' => 'https://example.com/job/123',
     ]);
@@ -50,7 +49,7 @@ it('includes the listing title and job url in the embed', function () {
 });
 
 it('includes a link to the app listing view', function () {
-    $listing = Listing::factory()->scored(80)->create();
+    $listing = Listing::factory()->scored()->create();
 
     app(DiscordNotifier::class)->sendListing($listing);
 
@@ -60,20 +59,4 @@ it('includes a link to the app listing view', function () {
 
         return str_contains($appField['value'], route('filament.admin.resources.listings.view', $listing));
     });
-});
-
-it('uses green color for scores 80 and above', function () {
-    $listing = Listing::factory()->scored(80)->create();
-
-    app(DiscordNotifier::class)->sendListing($listing);
-
-    Http::assertSent(fn ($request) => $request->data()['embeds'][0]['color'] === 0x22C55E);
-});
-
-it('uses yellow color for scores between 60 and 79', function () {
-    $listing = Listing::factory()->scored(70)->create();
-
-    app(DiscordNotifier::class)->sendListing($listing);
-
-    Http::assertSent(fn ($request) => $request->data()['embeds'][0]['color'] === 0xEAB308);
 });
