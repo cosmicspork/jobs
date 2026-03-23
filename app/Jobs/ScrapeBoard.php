@@ -4,13 +4,14 @@ namespace App\Jobs;
 
 use App\Models\Listing;
 use App\Services\Scrapers\ScraperInterface;
+use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
 class ScrapeBoard implements ShouldQueue
 {
-    use Queueable;
+    use Batchable, Queueable;
 
     public function __construct(
         public string $boardKey,
