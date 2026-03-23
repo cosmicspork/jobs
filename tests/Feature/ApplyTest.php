@@ -1,5 +1,6 @@
 <?php
 
+use App\ApplicationStatus;
 use App\Jobs\GenerateCoverLetter;
 use App\Jobs\GenerateResume;
 use App\Models\Application;
@@ -18,7 +19,7 @@ it('creates an application and dispatches generation jobs', function () {
 
     $application = Application::first();
     expect($application->listing_id)->toBe($listing->id)
-        ->and($application->status)->toBe('generating');
+        ->and($application->status)->toBe(ApplicationStatus::Generating);
 
     Bus::assertBatched(function ($batch) {
         return $batch->jobs->count() === 2

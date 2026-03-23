@@ -16,13 +16,7 @@ class ApplicationsRelationManager extends RelationManager
             ->recordTitleAttribute('id')
             ->columns([
                 TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'ready' => 'success',
-                        'generating' => 'warning',
-                        'failed' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->badge(),
                 TextColumn::make('resume_path')
                     ->label('Resume')
                     ->placeholder('Pending')

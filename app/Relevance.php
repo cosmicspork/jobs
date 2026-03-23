@@ -2,13 +2,16 @@
 
 namespace App;
 
-enum Relevance: string
+use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasLabel;
+
+enum Relevance: string implements HasColor, HasLabel
 {
     case Relevant = 'relevant';
     case Maybe = 'maybe';
     case Irrelevant = 'irrelevant';
 
-    public function label(): string
+    public function getLabel(): string
     {
         return match ($this) {
             self::Relevant => 'Relevant',
@@ -17,7 +20,7 @@ enum Relevance: string
         };
     }
 
-    public function color(): string
+    public function getColor(): string
     {
         return match ($this) {
             self::Relevant => 'success',

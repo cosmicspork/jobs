@@ -30,8 +30,7 @@ class ListingsTable
                 TextColumn::make('relevance')
                     ->sortable()
                     ->badge()
-                    ->formatStateUsing(fn (?Relevance $state): string => $state?->label() ?? 'Unscored')
-                    ->color(fn (?Relevance $state): string => $state?->color() ?? 'gray')
+                    ->placeholder('Unscored')
                     ->visible(fn (ListListings $livewire): bool => $livewire->activeTab === 'all'),
                 TextColumn::make('title')
                     ->searchable()
@@ -62,7 +61,7 @@ class ListingsTable
                         false: fn ($query) => $query->whereNull('read_at'),
                     ),
                 SelectFilter::make('board')
-                    ->options(fn () => Listing::query()->distinct()->pluck('board', 'board')->filter()->all()),
+                    ->options(fn () => collect(config('boards'))->mapWithKeys(fn ($board, $key) => [$key => $board['name']])),
                 SelectFilter::make('relevance')
                     ->options(Relevance::class),
             ])
@@ -70,9 +69,7 @@ class ListingsTable
                 Action::make('toggleRead')
                     ->label(fn (Listing $record): string => $record->read_at ? 'Mark Unread' : 'Mark Read')
                     ->icon(fn (Listing $record): string => $record->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
-                    ->action(function (Listing $record): void {
-                        $record->update(['read_at' => $record->read_at ? null : now()]);
-                    }),
+                    ->action(fn (Listing $record) => $record->toggleRead()),
                 ViewAction::make(),
             ])
             ->toolbarActions([
@@ -80,11 +77,10 @@ class ListingsTable
                     ->label('Mark Page as Read')
                     ->icon('heroicon-o-envelope-open')
                     ->action(function (Table $table): void {
-                        $table->getRecords()->each(function (Listing $record): void {
-                            if (! $record->read_at) {
-                                $record->update(['read_at' => now()]);
-                            }
-                        });
+                        Listing::query()
+                            ->whereIn('id', $table->getRecords()->pluck('id'))
+                            ->whereNull('read_at')
+                            ->update(['read_at' => now()]);
                     }),
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),

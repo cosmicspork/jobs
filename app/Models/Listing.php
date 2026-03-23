@@ -39,6 +39,11 @@ class Listing extends Model
         return $this->hasMany(Application::class);
     }
 
+    public function toggleRead(): void
+    {
+        $this->update(['read_at' => $this->read_at ? null : now()]);
+    }
+
     /**
      * @return array<string, string>
      */
