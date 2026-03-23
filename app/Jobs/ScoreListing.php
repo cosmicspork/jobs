@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Ai\Agents\JobScorerAgent;
 use App\Models\Listing;
+use App\Relevance;
 use App\Services\DiscordNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -21,20 +22,21 @@ class ScoreListing implements ShouldQueue
             "Score this job listing (listing_id: {$this->listing->id})."
         );
 
+        $relevance = Relevance::from($response['relevance']);
+
         $this->listing->update([
-            'score' => $response['score'],
+            'relevance' => $relevance,
             'score_data' => [
                 'matched_skills' => $response['matched_skills'],
                 'gaps' => $response['gaps'],
                 'reasoning' => $response['reasoning'],
-                'salary_match' => $response['salary_match'],
             ],
             'scored_at' => now(),
         ]);
 
-        Log::info("Scored listing {$this->listing->id}: {$response['score']}/100");
+        Log::info("Scored listing {$this->listing->id}: {$relevance->value}");
 
-        if ($response['score'] >= 70) {
+        if ($relevance === Relevance::Relevant) {
             app(DiscordNotifier::class)->sendListing($this->listing);
         }
     }

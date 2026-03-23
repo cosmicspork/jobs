@@ -35,12 +35,28 @@ class LarajobsScraper implements ScraperInterface
         $listings = [];
 
         foreach ($xml->channel->item as $item) {
+            $job = $item->children('job', true);
+
             $title = (string) $item->title;
             $link = (string) $item->link;
-            $description = strip_tags(html_entity_decode((string) $item->description));
-            $company = $this->extractCompany($title);
-            $remote = Str::contains($title.' '.$description, 'remote', true);
-            $salary = $this->parseSalary($title.' '.$description);
+            $company = (string) ($job->company ?? '') ?: $this->extractCompany($title);
+            $location = (string) ($job->location ?? '');
+            $jobType = (string) ($job->job_type ?? '');
+            $tags = (string) ($job->tags ?? '');
+            $salaryText = (string) ($job->salary ?? '');
+
+            $description = implode("\n", array_filter([
+                $title,
+                $company !== 'Unknown' ? "Company: {$company}" : '',
+                $location ? "Location: {$location}" : '',
+                $jobType ? "Type: {$jobType}" : '',
+                $tags ? "Tags: {$tags}" : '',
+                $salaryText ? "Salary: {$salaryText}" : '',
+            ]));
+
+            $searchable = $title.' '.$location.' '.$tags;
+            $remote = Str::contains($searchable, 'remote', true);
+            $salary = $this->parseSalary($salaryText ?: $searchable);
 
             $listings[] = [
                 'title' => $title,
@@ -55,6 +71,11 @@ class LarajobsScraper implements ScraperInterface
                     'link' => $link,
                     'description' => (string) $item->description,
                     'pubDate' => (string) $item->pubDate,
+                    'company' => $company,
+                    'location' => $location,
+                    'job_type' => $jobType,
+                    'tags' => $tags,
+                    'salary' => $salaryText,
                 ],
             ];
         }

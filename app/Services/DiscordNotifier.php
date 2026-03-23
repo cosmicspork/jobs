@@ -18,21 +18,14 @@ class DiscordNotifier
 
         $viewUrl = route('filament.admin.resources.listings.view', $listing);
 
-        $color = match (true) {
-            $listing->score >= 80 => 0x22C55E,
-            $listing->score >= 60 => 0xEAB308,
-            default => 0xEF4444,
-        };
-
         Http::post($webhookUrl, [
             'embeds' => [
                 [
                     'title' => Str::limit($listing->title, 256),
                     'url' => $listing->url,
-                    'color' => $color,
+                    'color' => 0x22C55E,
                     'fields' => [
                         ['name' => 'Company', 'value' => $listing->company ?? 'Unknown', 'inline' => true],
-                        ['name' => 'Score', 'value' => (string) $listing->score, 'inline' => true],
                         ['name' => 'Board', 'value' => $listing->board ?? 'Unknown', 'inline' => true],
                         ['name' => 'Description', 'value' => Str::limit($listing->description, 300)],
                         ['name' => 'App', 'value' => "[View listing]({$viewUrl})"],

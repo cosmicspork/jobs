@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Listings\Tables;
 
+use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Models\Listing;
+use App\Relevance;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -25,15 +27,12 @@ class ListingsTable
                     ->state(fn (Listing $record): bool => $record->applications_count > 0)
                     ->boolean()
                     ->falseIcon(null),
-                TextColumn::make('score')
+                TextColumn::make('relevance')
                     ->sortable()
                     ->badge()
-                    ->color(fn (?int $state): string => match (true) {
-                        $state === null => 'gray',
-                        $state >= 80 => 'success',
-                        $state >= 60 => 'warning',
-                        default => 'danger',
-                    }),
+                    ->formatStateUsing(fn (?Relevance $state): string => $state?->label() ?? 'Unscored')
+                    ->color(fn (?Relevance $state): string => $state?->color() ?? 'gray')
+                    ->visible(fn (ListListings $livewire): bool => $livewire->activeTab === 'all'),
                 TextColumn::make('title')
                     ->searchable()
                     ->sortable()
@@ -46,7 +45,7 @@ class ListingsTable
                     ->badge()
                     ->sortable(),
             ])
-            ->defaultSort('score', 'desc')
+            ->defaultSort('scored_at', 'desc')
             ->filters([
                 TernaryFilter::make('remote')
                     ->label('Remote'),
@@ -64,6 +63,8 @@ class ListingsTable
                     ),
                 SelectFilter::make('board')
                     ->options(fn () => Listing::query()->distinct()->pluck('board', 'board')->filter()->all()),
+                SelectFilter::make('relevance')
+                    ->options(Relevance::class),
             ])
             ->recordActions([
                 Action::make('toggleRead')
