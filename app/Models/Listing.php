@@ -27,6 +27,7 @@ class Listing extends Model
         'score_data',
         'scored_at',
         'scraped_at',
+        'read_at',
     ];
 
     /**
@@ -48,6 +49,7 @@ class Listing extends Model
             'remote' => 'boolean',
             'scored_at' => 'datetime',
             'scraped_at' => 'datetime',
+            'read_at' => 'datetime',
         ];
     }
 }
