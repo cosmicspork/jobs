@@ -1,5 +1,6 @@
 <?php
 
+use App\ApplicationStatus;
 use App\Models\Application;
 use App\Models\Listing;
 
@@ -18,13 +19,13 @@ it('belongs to a listing', function () {
 it('defaults to generating status', function () {
     $application = Application::factory()->create();
 
-    expect($application->status)->toBe('generating');
+    expect($application->status)->toBe(ApplicationStatus::Generating);
 });
 
 it('can be marked as ready', function () {
     $application = Application::factory()->ready()->create();
 
-    expect($application->status)->toBe('ready')
+    expect($application->status)->toBe(ApplicationStatus::Ready)
         ->and($application->resume_path)->not->toBeNull()
         ->and($application->cover_letter_path)->not->toBeNull();
 });

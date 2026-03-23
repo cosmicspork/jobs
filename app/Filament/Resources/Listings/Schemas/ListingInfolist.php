@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Listings\Schemas;
 
-use App\Relevance;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -47,8 +46,7 @@ class ListingInfolist
                     ->schema([
                         TextEntry::make('relevance')
                             ->badge()
-                            ->formatStateUsing(fn (?Relevance $state): string => $state?->label() ?? 'Unscored')
-                            ->color(fn (?Relevance $state): string => $state?->color() ?? 'gray'),
+                            ->placeholder('Unscored'),
                         TextEntry::make('scored_at')
                             ->since()
                             ->placeholder('Not scored'),
