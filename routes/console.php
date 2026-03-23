@@ -3,8 +3,7 @@
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('jobs:scrape')->dailyAt('07:00');
-Schedule::command('jobs:score')->dailyAt('07:15');
+Schedule::command('jobs:scrape')->hourly();
 
 Artisan::command('app:generate-token', function (): void {
     $token = base64_encode(random_bytes(32));
