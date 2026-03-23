@@ -16,6 +16,10 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    ->beforeEach(function () {
+        config(['app.token' => 'test-token']);
+        $this->withHeader('Authorization', 'Bearer test-token');
+    })
     ->in('Feature');
 
 /*
