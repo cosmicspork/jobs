@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Ai\Agents\JobScorerAgent;
 use App\Models\Listing;
+use App\Services\DiscordNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -32,5 +33,9 @@ class ScoreListing implements ShouldQueue
         ]);
 
         Log::info("Scored listing {$this->listing->id}: {$response['score']}/100");
+
+        if ($response['score'] >= 70) {
+            app(DiscordNotifier::class)->sendListing($this->listing);
+        }
     }
 }

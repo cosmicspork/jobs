@@ -27,7 +27,7 @@ class ApplicationController extends Controller
             $application->update(['status' => 'failed']);
         })->dispatch();
 
-        return redirect()->route('feed')
+        return redirect()->route('filament.admin.resources.listings.view', $listing)
             ->with('status', "Generating application for {$listing->company}...");
     }
 }
