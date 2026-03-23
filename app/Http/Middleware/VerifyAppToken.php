@@ -21,11 +21,17 @@ class VerifyAppToken
             abort(403, 'APP_TOKEN is not configured.');
         }
 
+        if ($request->session()->get('app_token_verified')) {
+            return $next($request);
+        }
+
         $provided = $request->query('token') ?? $request->bearerToken();
 
         if (! $provided || ! hash_equals($token, $provided)) {
             abort(403, 'Invalid or missing token.');
         }
+
+        $request->session()->put('app_token_verified', true);
 
         return $next($request);
     }
