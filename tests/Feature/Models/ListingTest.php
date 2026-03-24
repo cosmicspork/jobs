@@ -43,3 +43,30 @@ it('deduplicates listings by url', function () {
     expect(fn () => Listing::factory()->create(['url' => 'https://example.com/job/1']))
         ->toThrow(UniqueConstraintViolationException::class);
 });
+
+it('toggles starred state', function () {
+    $listing = Listing::factory()->create();
+
+    expect($listing->starred_at)->toBeNull();
+
+    $listing->toggleStarred();
+    $listing->refresh();
+
+    expect($listing->starred_at)->toBeInstanceOf(Carbon::class);
+
+    $listing->toggleStarred();
+    $listing->refresh();
+
+    expect($listing->starred_at)->toBeNull();
+});
+
+it('can be shortlisted', function () {
+    $listing = Listing::factory()->create();
+
+    expect($listing->shortlisted_at)->toBeNull();
+
+    $listing->shortlist();
+    $listing->refresh();
+
+    expect($listing->shortlisted_at)->toBeInstanceOf(Carbon::class);
+});

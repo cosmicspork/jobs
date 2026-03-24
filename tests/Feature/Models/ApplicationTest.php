@@ -1,8 +1,11 @@
 <?php
 
 use App\ApplicationStatus;
+use App\Jobs\GenerateCoverLetter;
+use App\Jobs\GenerateResume;
 use App\Models\Application;
 use App\Models\Listing;
+use Illuminate\Support\Facades\Bus;
 
 it('uses ulids as primary keys', function () {
     $application = Application::factory()->create();
@@ -28,6 +31,59 @@ it('can be marked as ready', function () {
     expect($application->status)->toBe(ApplicationStatus::Ready)
         ->and($application->resume_path)->not->toBeNull()
         ->and($application->cover_letter_path)->not->toBeNull();
+});
+
+it('generates resume only', function () {
+    Bus::fake();
+
+    $listing = Listing::factory()->scored()->create();
+    $application = Application::generateResume($listing);
+
+    expect($application->listing_id)->toBe($listing->id)
+        ->and($application->status)->toBe(ApplicationStatus::Generating);
+
+    Bus::assertBatched(function ($batch) {
+        return $batch->jobs->count() === 1
+            && $batch->jobs->contains(fn ($job) => $job instanceof GenerateResume);
+    });
+});
+
+it('generates cover letter only', function () {
+    Bus::fake();
+
+    $listing = Listing::factory()->scored()->create();
+    $application = Application::generateCoverLetter($listing);
+
+    expect($application->listing_id)->toBe($listing->id);
+
+    Bus::assertBatched(function ($batch) {
+        return $batch->jobs->count() === 1
+            && $batch->jobs->contains(fn ($job) => $job instanceof GenerateCoverLetter);
+    });
+});
+
+it('generates both resume and cover letter', function () {
+    Bus::fake();
+
+    $listing = Listing::factory()->scored()->create();
+    Application::generateBoth($listing);
+
+    Bus::assertBatched(function ($batch) {
+        return $batch->jobs->count() === 2
+            && $batch->jobs->contains(fn ($job) => $job instanceof GenerateResume)
+            && $batch->jobs->contains(fn ($job) => $job instanceof GenerateCoverLetter);
+    });
+});
+
+it('reuses existing application for same listing', function () {
+    Bus::fake();
+
+    $listing = Listing::factory()->scored()->create();
+    $first = Application::generateResume($listing);
+    $second = Application::generateCoverLetter($listing);
+
+    expect($first->id)->toBe($second->id)
+        ->and(Application::count())->toBe(1);
 });
 
 it('cascades delete from listing', function () {

@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Listings;
 
+use App\Filament\Resources\Listings\Pages\EditListing;
 use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Filament\Resources\Listings\Pages\ViewListing;
 use App\Filament\Resources\Listings\RelationManagers\ApplicationsRelationManager;
+use App\Filament\Resources\Listings\Schemas\ListingForm;
 use App\Filament\Resources\Listings\Schemas\ListingInfolist;
 use App\Filament\Resources\Listings\Tables\ListingsTable;
 use App\Models\Listing;
@@ -21,6 +23,11 @@ class ListingResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
 
     protected static ?string $recordTitleAttribute = 'title';
+
+    public static function form(Schema $schema): Schema
+    {
+        return ListingForm::configure($schema);
+    }
 
     public static function infolist(Schema $schema): Schema
     {
@@ -44,6 +51,7 @@ class ListingResource extends Resource
         return [
             'index' => ListListings::route('/'),
             'view' => ViewListing::route('/{record}'),
+            'edit' => EditListing::route('/{record}/edit'),
         ];
     }
 }

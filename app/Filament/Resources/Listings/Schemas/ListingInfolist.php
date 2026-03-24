@@ -47,9 +47,17 @@ class ListingInfolist
                         TextEntry::make('relevance')
                             ->badge()
                             ->placeholder('Unscored'),
+                        TextEntry::make('score_data.role_type')
+                            ->label('Role Type')
+                            ->placeholder('Unknown'),
                         TextEntry::make('scored_at')
                             ->since()
                             ->placeholder('Not scored'),
+                        TextEntry::make('score_data.posting_quality_signals')
+                            ->label('Quality Signals')
+                            ->badge()
+                            ->color('info')
+                            ->placeholder('None'),
                         TextEntry::make('score_data.matched_skills')
                             ->label('Matched Skills')
                             ->badge()
@@ -73,6 +81,12 @@ class ListingInfolist
                         TextEntry::make('read_at')
                             ->since()
                             ->placeholder('Unread'),
+                        TextEntry::make('starred_at')
+                            ->since()
+                            ->placeholder('Not starred'),
+                        TextEntry::make('shortlisted_at')
+                            ->since()
+                            ->placeholder('Not shortlisted'),
                         TextEntry::make('created_at')
                             ->since(),
                     ]),
