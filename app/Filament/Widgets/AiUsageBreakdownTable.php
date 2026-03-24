@@ -55,6 +55,7 @@ class AiUsageBreakdownTable extends TableWidget
                     ->formatStateUsing(fn ($state) => '$'.number_format($state, 4))
                     ->sortable(),
             ])
-            ->paginated(false);
+            ->paginated(false)
+            ->defaultSort(null);
     }
 }
