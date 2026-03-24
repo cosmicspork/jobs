@@ -6,42 +6,35 @@ return [
 
     'title' => env('PROFILE_TITLE', 'Engineering Manager'),
 
-    'summary' => 'Technology leader with 10 years spanning software development, systems administration, DevOps, '
-        .'and vendor integrations, seeking an engineering management role. '
-        .'Experienced in hiring, 1:1s, stakeholder management, cross-team coordination, and technical strategy. '
-        .'Sole manager of a university admissions stakeholder group — running meetings, managing feature requests, '
-        .'bug reports, project status, and process improvement discovery. '
-        .'Designed and championed a centralized integrations framework adopted by the dev team, '
-        .'replacing 50+ integrations scattered across a legacy codebase. '
-        .'Led an AI tooling task force for a 50-person development org — administered a developer survey, '
-        .'conducted structured interviews, and presented recommendations at an org-wide AI summit (Oct 2025). '
-        .'Co-founded a startup (PakPak) and ran the business side (incorporation, accounting, legal, fundraising). '
-        .'Built and managed a small-business accelerator program including curriculum development, '
-        .'expert recruitment, and client consulting. '
-        .'B.S. in Entrepreneurship, M.S. in IT Innovation, Graduate Certificate in Cybersecurity. '
-        .'Passionate about ideation, strategy, architecture, and vision — wants to lead teams, not just write code.',
+    'email' => env('PROFILE_EMAIL', ''),
 
-    'skills' => [
-        'People Management',
+    'location' => env('PROFILE_LOCATION', 'Remote'),
+
+    'summaries' => [
+        'em' => 'Technology leader with 9+ years spanning software development, infrastructure, '
+            .'and engineering leadership. Currently leading a university admissions stakeholder '
+            .'group and an org-wide AI tooling initiative while building production Laravel '
+            .'and React applications. Seeking an engineering management role where I can build '
+            .'teams, shape technical strategy, and stay close to the code.',
+
+        'ic' => 'Full-stack engineer with 9+ years building production web applications in Laravel, '
+            .'React, TypeScript, and Python. Deep Laravel ecosystem experience (Nova, Livewire, '
+            .'Cloud, AI SDK) with infrastructure skills spanning Kubernetes, AWS, and CI/CD. '
+            .'Currently building AI-native workflows and a centralized integrations framework '
+            .'serving a 50-person development org.',
+    ],
+
+    'leadership_skills' => [
+        'People Management & 1:1s',
         'Hiring & Interviewing',
         'Stakeholder Management',
-        'Project Management',
-        'Technical Strategy',
+        'Technical Strategy & Roadmapping',
         'Architecture & System Design',
         'Process Improvement',
         'Cross-Team Coordination',
-        'PHP',
-        'Laravel',
-        'TypeScript',
-        'React',
-        'Python',
-        'Kubernetes',
-        'Docker',
-        'AWS',
-        'CI/CD',
-        'SSO (SAML/OIDC)',
-        'AI Tooling',
-        'Laravel AI SDK',
+        'Mentoring & Career Development',
+        'Project Management',
+        'AI Tooling Strategy',
     ],
 
     'experience' => [
@@ -143,12 +136,206 @@ return [
         'ai_tools' => ['Claude Code', 'Codex', 'OpenCode', 'Laravel AI SDK'],
     ],
 
-    'experience_years' => 10,
+    'experience_years' => '9+',
 
     'preferences' => [
         'remote' => true,
-        'salary_min' => 70000,
+        'salary_min' => 120000,
         'locations' => ['Remote'],
+    ],
+
+    'prompts' => [
+
+        'scorer' => <<<'PROMPT'
+        You are a job matching analyst. Given a candidate profile and a job
+        listing, classify the listing and detect the role type.
+
+        STEP 1 — ROLE TYPE DETECTION:
+        Classify the posting as "em" (engineering management), "ic" (individual
+        contributor), or "hybrid" (tech lead / player-coach).
+
+        Management indicators: title contains manager/director/VP/head of;
+        body mentions hiring, team building, 1:1s, career development,
+        performance reviews, scaling the team, stakeholder management,
+        engineering culture, org-level initiatives.
+
+        IC indicators: title contains engineer/developer/architect (without
+        "manager"/"lead"); body focuses on specific technologies, coding,
+        system design, shipping features, pull requests, algorithms.
+
+        Hybrid indicators: "tech lead" or "staff engineer" titles; mentions
+        both coding and mentoring; "player-coach" language; small team where
+        everyone does everything.
+
+        STEP 2 — RELEVANCE CLASSIFICATION:
+        Classify into one of three tiers:
+
+        - "relevant": Strong alignment with career goals, skills, and
+          preferences. Worth applying to.
+        - "maybe": Partial fit — worth a glance but not a strong match.
+          Good tech overlap but wrong role type, or right role but
+          significant skill gaps.
+        - "irrelevant": Not a match. Wrong field, wrong level, missing
+          most required skills, or hard blockers.
+
+        WEIGHTING RULES (in priority order):
+        1. Career direction: The candidate prefers management roles. An EM
+           role with moderate tech overlap is MORE relevant than an IC role
+           with perfect tech overlap. IC roles can still be "relevant" if
+           they strongly match the candidate's technical skills and are
+           senior-level.
+        2. Remote: Hard constraint. On-site-only roles are "irrelevant"
+           unless the listing explicitly offers remote.
+        3. Salary floor: Roles explicitly paying below $120k are less
+           attractive. Roles with no salary listed should not be penalized.
+        4. Technical alignment: Strong positive signals — Laravel, PHP,
+           TypeScript, React, Kubernetes, AWS, AI tooling. Moderate signals
+           — Python, PostgreSQL, Node.js, Docker, SSO/identity. Weak or
+           negative signals — Java, C#, .NET (no experience).
+        5. Role-type match: EM roles score highest. Hybrid/tech-lead roles
+           score high. Senior IC roles with strong tech match score medium.
+           Junior/mid IC roles score low.
+        6. Posting quality: Named author (VP, CTO, founder) is a positive
+           signal. Detailed engineering culture description is positive.
+           Specific interview process mentioned is positive. Salary listed
+           is a transparency signal.
+
+        NEGATIVE SIGNALS:
+        - Requires 5+ years as titled "Engineering Manager" (title gap)
+        - Requires managing managers (no experience)
+        - Java/C#/.NET primary stack (no experience)
+        - On-site required
+        - Very large org (500+ engineers) for EM roles (scale mismatch)
+
+        STEP 3 — POSTING QUALITY SIGNALS:
+        List any posting quality signals you observe (named author, detailed
+        culture, salary listed, specific interview process, etc.).
+
+        Use the GetProfile tool to retrieve the candidate's profile and the
+        GetJobPosting tool to retrieve the job listing details.
+        Respond as JSON matching the provided schema.
+        PROMPT,
+
+        'resume' => <<<'PROMPT'
+        You are a resume optimization specialist. Given a candidate's full
+        profile and a target job posting, produce a tailored resume.
+
+        STEP 1 — ROLE TYPE DETECTION:
+        Determine whether the posting is primarily a management role ("em"),
+        IC role ("ic"), or hybrid ("hybrid"). Use the same signals as
+        described: title keywords, body content about hiring/teams vs.
+        coding/shipping.
+
+        STEP 2 — SUMMARY SELECTION:
+        The candidate profile contains two pre-written summaries under the
+        "summaries" key: "em" and "ic". Select the one matching the detected
+        role type (use "em" for hybrid roles). You may lightly edit the
+        selected summary to better align with the specific posting, but
+        keep it to 2-3 sentences and preserve the core message.
+
+        STEP 3 — SKILLS SELECTION:
+        Select 10-12 skills most relevant to the posting. Pull from both
+        "leadership_skills" and "technical_depth" in the profile.
+        For EM roles: mix of leadership skills (5-6) and technical skills (5-6).
+        For IC roles: primarily technical skills (8-9) with 2-3 leadership signals.
+        For hybrid: balanced mix.
+        Match exact keywords from the job posting where possible for ATS
+        compatibility. Do not keyword-stuff — each skill should reflect
+        genuine experience.
+
+        STEP 4 — EXPERIENCE TAILORING:
+        Return the candidate's experience entries as structured objects with
+        role, company, period, and tailored highlights.
+
+        Bullet ordering rules:
+        - For EM roles: lead each entry with management-oriented bullets
+          (team leadership, stakeholder management, hiring, mentoring,
+          org-level initiatives) then follow with technical work.
+        - For IC roles: lead with technical depth (architecture, systems,
+          shipping products) then follow with collaboration and leadership.
+        - For hybrid: interleave management and technical bullets.
+
+        Bullet selection rules:
+        - Current/primary role: 3-6 bullets, selecting the most relevant.
+        - Second most recent role: 2-4 bullets.
+        - Older roles: 1-2 bullets each. Omit roles entirely if they add
+          nothing relevant to this posting.
+
+        Bullet content rules:
+        - Use specific, believable metrics. Prefer concrete numbers (team
+          size, budget, timeline, headcount) over vague percentages.
+        - Include enough context that each metric is discussable in an
+          interview.
+        - Format: [Action verb] + [what you did] + [scope/scale] + [result]
+        - Never fabricate experience or inflate numbers.
+
+        STEP 5 — ATS KEYWORDS:
+        Identify key terms from the job posting and ensure they appear
+        naturally in the skills section and experience bullets. Return
+        the matched keywords in the keyword_matches field.
+
+        Use the GetProfile and GetJobPosting tools to gather context.
+        Return a JSON object matching the provided schema.
+        PROMPT,
+
+        'cover_letter' => <<<'PROMPT'
+        You are a cover letter writing specialist. Given a candidate's profile
+        and a target job posting, write a compelling, concise cover letter.
+
+        ROLE TYPE DETECTION:
+        Determine whether the posting is primarily management ("em"), IC ("ic"),
+        or hybrid. This determines framing and emphasis.
+
+        WORD LIMIT: The body must be under 300 words. Brevity demonstrates
+        communication skill and respect for the reader's time.
+
+        STRUCTURE (max 4 paragraphs):
+
+        Opening (1-2 sentences):
+        - What you're applying for.
+        - One specific reason you're excited about THIS role — reference a
+          concrete detail from the posting (a project, challenge, team
+          structure, or cultural value). Not generic enthusiasm.
+
+        Body (1-2 short paragraphs):
+        - Pick 2-3 requirements from the job description.
+        - Match each to a proof point from the candidate's experience.
+        - For EM roles: include a concrete example of management philosophy
+          that aligns with the company's stated engineering culture.
+        - For IC roles: lead with the strongest technical proof point.
+        - Don't repeat the resume — add context, motivation, and the "why."
+
+        Close (1-2 sentences):
+        - Restate fit concisely.
+        - Express genuine interest.
+        - Clear next step (availability, eagerness to discuss).
+
+        VOICE AND TONE:
+        Write in a natural, direct, professional but personable tone.
+
+        BANNED PHRASES (these signal generic AI output):
+        - "I am writing to express my strong interest"
+        - "I am confident that my skills and experience"
+        - "I would be a valuable addition to your team"
+        - "I am excited to apply for"
+        - "I look forward to the opportunity"
+        - Any opening that starts with "I am writing to..."
+
+        SPECIFICITY REQUIREMENT:
+        You MUST reference at least one specific detail from the job posting
+        that demonstrates the candidate has read and understood the role.
+        Not just the company name — a specific project, challenge, team
+        detail, or cultural value mentioned in the posting. Return this
+        detail in the posting_detail_referenced field.
+
+        THREE-SENTENCE TEST:
+        Before finalizing, verify the core message can be summarized in
+        three sentences. If not, the letter is doing too much.
+
+        Use the GetProfile and GetJobPosting tools to gather context.
+        Return a JSON object matching the provided schema.
+        PROMPT,
+
     ],
 
 ];

@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class GenerateCoverLetter implements ShouldQueue
 {
@@ -20,19 +21,21 @@ class GenerateCoverLetter implements ShouldQueue
     public function handle(): void
     {
         $listing = $this->application->listing;
+        $profile = config('profile');
 
         $response = (new CoverLetterAgent)->prompt(
             "Write a cover letter for this job posting (listing_id: {$listing->id})."
         );
 
         $pdf = Pdf::loadView('cover-letter.base', [
-            'profile' => config('profile'),
+            'profile' => $profile,
             'subjectLine' => $response['subject_line'],
             'body' => $response['body'],
             'listing' => $listing,
         ]);
 
-        $path = "cover-letters/{$this->application->id}.pdf";
+        $slug = Str::slug($profile['name'].'_CoverLetter');
+        $path = "cover-letters/{$slug}_{$this->application->id}.pdf";
         Storage::put($path, $pdf->output());
 
         $this->application->update(['cover_letter_path' => $path]);

@@ -3,6 +3,7 @@
 namespace App\Ai\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Arr;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Stringable;
@@ -17,7 +18,7 @@ class GetProfile implements Tool
     public function handle(Request $request): Stringable|string
     {
         /** @var array<string, mixed> $profile */
-        $profile = config('profile');
+        $profile = Arr::except(config('profile'), 'prompts');
 
         return json_encode($profile, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
     }

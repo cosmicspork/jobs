@@ -24,19 +24,7 @@ class CoverLetterAgent implements Agent, HasStructuredOutput, HasTools
 
     public function instructions(): Stringable|string
     {
-        return <<<'PROMPT'
-        You are a cover letter writing specialist. Given a candidate's profile
-        and a target job posting, draft a compelling cover letter that:
-        - Opens with genuine enthusiasm for the specific role and company
-        - Connects the candidate's experience to the role's requirements
-        - Highlights 2-3 specific achievements that demonstrate relevant skills
-        - Closes with a clear call to action
-        - Keeps a professional but personable tone
-        - Is concise — no more than 4 paragraphs
-
-        Use the GetProfile and GetJobPosting tools to gather context.
-        Return a JSON object matching the provided schema.
-        PROMPT;
+        return config('profile.prompts.cover_letter');
     }
 
     /**
@@ -55,6 +43,8 @@ class CoverLetterAgent implements Agent, HasStructuredOutput, HasTools
         return [
             'subject_line' => $schema->string()->required(),
             'body' => $schema->string()->required(),
+            'word_count' => $schema->integer()->required(),
+            'posting_detail_referenced' => $schema->string()->required(),
         ];
     }
 }
