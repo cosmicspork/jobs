@@ -34,10 +34,11 @@ it('has leadership skills as a non-empty array', function () {
 it('has prompts for all agents', function () {
     $prompts = config('profile.prompts');
 
-    expect($prompts)->toHaveKeys(['scorer', 'resume', 'cover_letter'])
+    expect($prompts)->toHaveKeys(['scorer', 'resume', 'cover_letter', 'application_questions'])
         ->and($prompts['scorer'])->toBeString()->not->toBeEmpty()
         ->and($prompts['resume'])->toBeString()->not->toBeEmpty()
-        ->and($prompts['cover_letter'])->toBeString()->not->toBeEmpty();
+        ->and($prompts['cover_letter'])->toBeString()->not->toBeEmpty()
+        ->and($prompts['application_questions'])->toBeString()->not->toBeEmpty();
 });
 
 it('has updated experience years and salary minimum', function () {
