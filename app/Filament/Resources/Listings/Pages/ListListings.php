@@ -14,23 +14,29 @@ class ListListings extends ListRecords
 
     public function getDefaultActiveTab(): string|int|null
     {
-        return 'queue';
+        return 'new';
     }
 
     public function getTabs(): array
     {
         return [
-            'queue' => Tab::make('Queue')
+            'new' => Tab::make('New')
+                ->icon('heroicon-o-sparkles')
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->whereNull('read_at')
                     ->where('relevance', Relevance::Relevant)),
-            'relevant' => Tab::make('Relevant')
+            'starred' => Tab::make('Starred')
+                ->icon('heroicon-o-star')
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->where('relevance', Relevance::Relevant)),
-            'maybe' => Tab::make('Maybe')
+                    ->whereNotNull('starred_at')
+                    ->orderByDesc('starred_at')),
+            'shortlisted' => Tab::make('Shortlisted')
+                ->icon('heroicon-o-clipboard-document-check')
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->where('relevance', Relevance::Maybe)),
+                    ->whereNotNull('shortlisted_at')
+                    ->doesntHave('applications')),
             'applied' => Tab::make('Applied')
+                ->icon('heroicon-o-check-circle')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('applications')),
             'all' => Tab::make('All'),
         ];

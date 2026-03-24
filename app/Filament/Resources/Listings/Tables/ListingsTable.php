@@ -22,11 +22,23 @@ class ListingsTable
         return $table
             ->modifyQueryUsing(fn ($query) => $query->withCount('applications'))
             ->columns([
-                IconColumn::make('applied')
+                IconColumn::make('starred_at')
+                    ->label('')
+                    ->state(fn (Listing $record): bool => (bool) $record->starred_at)
+                    ->icon(fn (Listing $record): string => $record->starred_at ? 'heroicon-s-star' : 'heroicon-o-star')
+                    ->color(fn (Listing $record): string => $record->starred_at ? 'warning' : 'gray')
+                    ->action(fn (Listing $record) => $record->toggleStarred())
+                    ->grow(false),
+                IconColumn::make('shortlisted_at')
+                    ->label('Shortlisted')
+                    ->icon(fn (Listing $record): ?string => $record->shortlisted_at ? 'heroicon-s-clipboard-document-check' : null)
+                    ->color('success')
+                    ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['all'])),
+                IconColumn::make('applications_count')
                     ->label('Applied')
-                    ->state(fn (Listing $record): bool => $record->applications_count > 0)
-                    ->boolean()
-                    ->falseIcon(null),
+                    ->icon(fn (Listing $record): ?string => $record->applications_count > 0 ? 'heroicon-s-check-circle' : null)
+                    ->color('success')
+                    ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['starred', 'all'])),
                 TextColumn::make('relevance')
                     ->sortable()
                     ->badge()
@@ -59,6 +71,12 @@ class ListingsTable
                     ->queries(
                         true: fn ($query) => $query->whereNotNull('read_at'),
                         false: fn ($query) => $query->whereNull('read_at'),
+                    ),
+                TernaryFilter::make('starred')
+                    ->label('Starred')
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('starred_at'),
+                        false: fn ($query) => $query->whereNull('starred_at'),
                     ),
                 SelectFilter::make('board')
                     ->options(fn () => collect(config('boards'))->mapWithKeys(fn ($board, $key) => [$key => $board['name']])),
