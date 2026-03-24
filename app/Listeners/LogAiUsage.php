@@ -3,11 +3,10 @@
 namespace App\Listeners;
 
 use App\Models\AiUsage;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Responses\Data\Usage;
 
-class LogAiUsage implements ShouldQueue
+class LogAiUsage
 {
     public function handle(AgentPrompted $event): void
     {
