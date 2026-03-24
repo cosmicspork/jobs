@@ -28,11 +28,9 @@
 <body>
     <div class="header">
         <h1>{{ $profile['name'] }}</h1>
-        <p>{{ $profile['title'] }}</p>
         @php
             $contactParts = array_filter([
                 $profile['email'] ?? null,
-                $profile['location'] ?? null,
             ]);
         @endphp
         @if(count($contactParts))

@@ -5,9 +5,7 @@ it('has all required top-level keys', function () {
 
     expect($profile)->toHaveKeys([
         'name',
-        'title',
         'email',
-        'location',
         'summaries',
         'leadership_skills',
         'experience',
