@@ -10,7 +10,7 @@ class ApplicationController extends Controller
 {
     public function store(Listing $listing): RedirectResponse
     {
-        Application::generate($listing);
+        Application::generateBoth($listing);
 
         return redirect()->route('filament.admin.resources.listings.view', $listing)
             ->with('status', "Generating application for {$listing->company}...");

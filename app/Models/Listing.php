@@ -29,6 +29,8 @@ class Listing extends Model
         'scored_at',
         'scraped_at',
         'read_at',
+        'starred_at',
+        'shortlisted_at',
     ];
 
     /**
@@ -44,6 +46,16 @@ class Listing extends Model
         $this->update(['read_at' => $this->read_at ? null : now()]);
     }
 
+    public function toggleStarred(): void
+    {
+        $this->update(['starred_at' => $this->starred_at ? null : now()]);
+    }
+
+    public function shortlist(): void
+    {
+        $this->update(['shortlisted_at' => now()]);
+    }
+
     /**
      * @return array<string, string>
      */
@@ -57,6 +69,8 @@ class Listing extends Model
             'scored_at' => 'datetime',
             'scraped_at' => 'datetime',
             'read_at' => 'datetime',
+            'starred_at' => 'datetime',
+            'shortlisted_at' => 'datetime',
         ];
     }
 }
