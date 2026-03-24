@@ -4,11 +4,7 @@ return [
 
     'name' => env('PROFILE_NAME', 'Joshua Bowen'),
 
-    'title' => env('PROFILE_TITLE', 'Engineering Manager'),
-
     'email' => env('PROFILE_EMAIL', ''),
-
-    'location' => env('PROFILE_LOCATION', 'Remote'),
 
     'summaries' => [
         'em' => 'Technology leader with 9+ years spanning software development, infrastructure, '
