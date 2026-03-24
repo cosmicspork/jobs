@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class GenerateResume implements ShouldQueue
 {
@@ -20,20 +21,22 @@ class GenerateResume implements ShouldQueue
     public function handle(): void
     {
         $listing = $this->application->listing;
+        $profile = config('profile');
 
         $response = (new ResumeTailorAgent)->prompt(
             "Tailor my resume for this job posting (listing_id: {$listing->id})."
         );
 
         $pdf = Pdf::loadView('resume.base', [
-            'profile' => config('profile'),
+            'profile' => $profile,
             'summary' => $response['summary'],
             'skills' => $response['skills'],
-            'highlights' => $response['experience_highlights'],
+            'experience' => $response['experience'],
             'listing' => $listing,
         ]);
 
-        $path = "resumes/{$this->application->id}.pdf";
+        $slug = Str::slug($profile['name'].'_Resume');
+        $path = "resumes/{$slug}_{$this->application->id}.pdf";
         Storage::put($path, $pdf->output());
 
         $this->application->update(['resume_path' => $path]);

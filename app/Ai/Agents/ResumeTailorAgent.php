@@ -24,17 +24,7 @@ class ResumeTailorAgent implements Agent, HasStructuredOutput, HasTools
 
     public function instructions(): Stringable|string
     {
-        return <<<'PROMPT'
-        You are a resume optimization specialist. Given a candidate's full
-        experience and a target job posting, produce a tailored resume by:
-        - Rewriting the professional summary to align with the role
-        - Reordering and emphasizing relevant skills
-        - Adjusting bullet point emphasis on experience entries
-        - Keeping all facts truthful — never fabricate experience
-
-        Use the GetProfile and GetJobPosting tools to gather context.
-        Return a JSON object matching the provided schema with the rewritten sections.
-        PROMPT;
+        return config('profile.prompts.resume');
     }
 
     /**
@@ -51,9 +41,16 @@ class ResumeTailorAgent implements Agent, HasStructuredOutput, HasTools
     public function schema(JsonSchema $schema): array
     {
         return [
+            'role_type' => $schema->string()->enum(['em', 'ic', 'hybrid'])->required(),
             'summary' => $schema->string()->required(),
-            'skills' => $schema->array($schema->string())->required(),
-            'experience_highlights' => $schema->array($schema->string())->required(),
+            'skills' => $schema->array()->items($schema->string())->required(),
+            'experience' => $schema->array()->items($schema->object([
+                'role' => $schema->string()->required(),
+                'company' => $schema->string()->required(),
+                'period' => $schema->string()->required(),
+                'highlights' => $schema->array()->items($schema->string())->required(),
+            ]))->required(),
+            'keyword_matches' => $schema->array()->items($schema->string()),
         ];
     }
 }
