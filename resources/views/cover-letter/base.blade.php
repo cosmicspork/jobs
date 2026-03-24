@@ -24,7 +24,6 @@
         @php
             $contactParts = array_filter([
                 $profile['email'] ?? null,
-                $profile['location'] ?? null,
             ]);
         @endphp
         @if(count($contactParts))
