@@ -41,6 +41,14 @@ class Listing extends Model
         return $this->hasMany(Application::class);
     }
 
+    /**
+     * @return HasMany<ApplicationQuestionSet, $this>
+     */
+    public function questionSets(): HasMany
+    {
+        return $this->hasMany(ApplicationQuestionSet::class);
+    }
+
     public function toggleRead(): void
     {
         $this->update(['read_at' => $this->read_at ? null : now()]);
