@@ -56,6 +56,6 @@ class AiUsageBreakdownTable extends TableWidget
                     ->sortable(),
             ])
             ->paginated(false)
-            ->defaultSort(null);
+            ->defaultKeySort(false);
     }
 }
