@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Listings\Pages;
 
+use App\Filament\Pages\ApplicationQuestions;
 use App\Filament\Resources\Listings\Concerns\HasListingActions;
 use App\Filament\Resources\Listings\ListingResource;
 use App\Models\Listing;
@@ -45,6 +46,10 @@ class ViewListing extends ViewRecord
                         ->success()
                         ->send();
                 }),
+            Action::make('applicationQuestions')
+                ->label('Application Questions')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->url(fn (): string => ApplicationQuestions::getUrl(['listing' => $this->record->id])),
             $this->getToggleStarredAction(),
             EditAction::make(),
             Action::make('toggleRead')
