@@ -2,7 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Resources\Listings\ListingResource;
+use App\Filament\Pages\Dashboard;
 use App\Http\Middleware\VerifyAppToken;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -25,13 +25,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('/')
             ->topNavigation()
+            ->breadcrumbs(false)
             ->colors([
                 'primary' => Color::Amber,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([])
-            ->homeUrl(fn (): string => ListingResource::getUrl())
+            ->homeUrl(fn (): string => Dashboard::getUrl())
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([
