@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Listings\RelationManagers;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 
 class ApplicationsRelationManager extends RelationManager
 {
@@ -20,12 +21,12 @@ class ApplicationsRelationManager extends RelationManager
                 TextColumn::make('resume_path')
                     ->label('Resume')
                     ->placeholder('Pending')
-                    ->url(fn ($record): ?string => $record->resume_path ? asset('storage/'.$record->resume_path) : null)
+                    ->url(fn ($record): ?string => $record->resume_path ? Storage::url($record->resume_path) : null)
                     ->openUrlInNewTab(),
                 TextColumn::make('cover_letter_path')
                     ->label('Cover Letter')
                     ->placeholder('Pending')
-                    ->url(fn ($record): ?string => $record->cover_letter_path ? asset('storage/'.$record->cover_letter_path) : null)
+                    ->url(fn ($record): ?string => $record->cover_letter_path ? Storage::url($record->cover_letter_path) : null)
                     ->openUrlInNewTab(),
                 TextColumn::make('applied_at')
                     ->label('Applied')
