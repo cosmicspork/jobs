@@ -14,6 +14,10 @@ class ScoreListing implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    public int $backoff = 30;
+
     public function __construct(public Listing $listing) {}
 
     public function handle(): void
@@ -21,6 +25,12 @@ class ScoreListing implements ShouldQueue
         $response = (new JobScorerAgent)->prompt(
             "Score this job listing (listing_id: {$this->listing->id})."
         );
+
+        if (! isset($response['relevance'])) {
+            throw new \RuntimeException(
+                "AI response missing required 'relevance' key for listing {$this->listing->id}."
+            );
+        }
 
         $relevance = Relevance::from($response['relevance']);
 
