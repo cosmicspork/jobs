@@ -87,6 +87,26 @@ it('includes cache token costs in calculation', function () {
     expect(round((float) AiUsage::first()->cost, 2))->toBe(1.08);
 });
 
+it('calculates cost correctly for versioned haiku model name', function () {
+    $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
+    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-4.5-haiku-20251001');
+
+    (new LogAiUsage)->handle(buildEvent($usage, $meta));
+
+    // Same pricing as haiku alias: $0.80/M input + $4.00/M output = $4.80
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(4.80);
+});
+
+it('calculates cost correctly for versioned sonnet model name', function () {
+    $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
+    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-4.6-sonnet-20260217');
+
+    (new LogAiUsage)->handle(buildEvent($usage, $meta));
+
+    // Same pricing as sonnet alias: $3.00/M input + $15.00/M output = $18.00
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(18.00);
+});
+
 it('sets cost to zero for unknown models', function () {
     $usage = new Usage(promptTokens: 1000, completionTokens: 500);
     $meta = new Meta(provider: 'openai', model: 'gpt-4o');
