@@ -13,12 +13,19 @@ class AiUsage extends Model
 
     /**
      * OpenRouter pricing per million tokens.
+     * Keyed by both alias and full versioned model names.
      *
      * @var array<string, array{input: float, output: float, cacheWrite: float, cacheRead: float}>
      */
+    private const SONNET_PRICING = ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30];
+
+    private const HAIKU_PRICING = ['input' => 0.80, 'output' => 4.00, 'cacheWrite' => 1.00, 'cacheRead' => 0.08];
+
     public const PRICING = [
-        'anthropic/claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
-        'anthropic/claude-haiku-4-5' => ['input' => 0.80, 'output' => 4.00, 'cacheWrite' => 1.00, 'cacheRead' => 0.08],
+        'anthropic/claude-sonnet-4-6' => self::SONNET_PRICING,
+        'anthropic/claude-4.6-sonnet-20260217' => self::SONNET_PRICING,
+        'anthropic/claude-haiku-4-5' => self::HAIKU_PRICING,
+        'anthropic/claude-4.5-haiku-20251001' => self::HAIKU_PRICING,
     ];
 
     protected $fillable = [

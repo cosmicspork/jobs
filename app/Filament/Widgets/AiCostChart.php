@@ -32,7 +32,9 @@ class AiCostChart extends ChartWidget
 
         $colors = [
             'anthropic/claude-sonnet-4-6' => 'rgb(251, 191, 36)',
+            'anthropic/claude-4.6-sonnet-20260217' => 'rgb(251, 191, 36)',
             'anthropic/claude-haiku-4-5' => 'rgb(96, 165, 250)',
+            'anthropic/claude-4.5-haiku-20251001' => 'rgb(96, 165, 250)',
         ];
 
         foreach ($costs as $model => $records) {
