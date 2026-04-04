@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('jobs:scrape')->hourly();
+Schedule::command('digest:send')->dailyAt('08:00');
 
 Artisan::command('app:generate-token', function (): void {
     $token = base64_encode(random_bytes(32));
