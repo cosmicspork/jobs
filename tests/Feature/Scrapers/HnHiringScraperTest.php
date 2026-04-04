@@ -32,7 +32,7 @@ HTML),
     ]);
 
     $scraper = new HnHiringScraper;
-    $listings = $scraper->scrape();
+    $listings = iterator_to_array($scraper->scrape());
 
     expect($listings)->toHaveCount(2)
         ->and($listings[0]['company'])->toBe('Acme Corp')
@@ -73,7 +73,7 @@ HTML),
     ]);
 
     $scraper = new HnHiringScraper;
-    $listings = $scraper->scrape();
+    $listings = iterator_to_array($scraper->scrape());
 
     expect($listings)->toHaveCount(1)
         ->and($listings[0]['company'])->toBe('Acme Corp');
@@ -86,7 +86,7 @@ it('returns empty array on failed request', function () {
 
     $scraper = new HnHiringScraper;
 
-    expect($scraper->scrape())->toBeEmpty();
+    expect(iterator_to_array($scraper->scrape()))->toBeEmpty();
 });
 
 it('returns empty array when no comments found', function () {
@@ -102,5 +102,5 @@ HTML),
 
     $scraper = new HnHiringScraper;
 
-    expect($scraper->scrape())->toBeEmpty();
+    expect(iterator_to_array($scraper->scrape()))->toBeEmpty();
 });

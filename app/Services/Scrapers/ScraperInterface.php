@@ -7,7 +7,7 @@ interface ScraperInterface
     /**
      * Scrape job listings from the board.
      *
-     * @return array<int, array{
+     * @return iterable<int, array{
      *     title: string,
      *     company: string,
      *     url: string,
@@ -18,5 +18,5 @@ interface ScraperInterface
      *     raw_data: array<string, mixed>,
      * }>
      */
-    public function scrape(): array;
+    public function scrape(): iterable;
 }
