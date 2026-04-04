@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Relevance;
 use Database\Factories\ListingFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -47,6 +48,25 @@ class Listing extends Model
     public function questionSets(): HasMany
     {
         return $this->hasMany(ApplicationQuestionSet::class);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function companyName(): string
+    {
+        return $this->company ?? 'Unknown';
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeShortlistedWithoutApplications(Builder $query): Builder
+    {
+        return $query->whereNotNull('shortlisted_at')
+            ->whereDoesntHave('applications');
     }
 
     public function toggleRead(): void

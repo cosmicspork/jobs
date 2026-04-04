@@ -64,7 +64,7 @@
                         <a href="{{ $listing->url }}">{{ $listing->title }}</a>
                     </div>
                     <div class="listing-meta">
-                        {{ $listing->company ?? 'Unknown' }}
+                        {{ $listing->companyName() }}
                         &middot; {{ $listing->board }}
                         @if($listing->remote)
                             &middot; Remote
@@ -103,7 +103,7 @@
                 <div class="compact-listing">
                     <a href="{{ $listing->url }}">{{ $listing->title }}</a>
                     <span class="meta">
-                        &mdash; {{ $listing->company ?? 'Unknown' }}
+                        &mdash; {{ $listing->companyName() }}
                         &middot; {{ $listing->board }}
                         &middot; <a href="{{ route('filament.admin.resources.listings.view', $listing) }}" style="color: #2563eb; text-decoration: none;">Admin</a>
                     </span>
@@ -128,7 +128,7 @@
                         @foreach($readyApplications as $application)
                             <div class="app-item">
                                 <span class="badge badge-green">Ready</span>
-                                {{ $application->listing->title }} &mdash; {{ $application->listing->company ?? 'Unknown' }}
+                                {{ $application->listing->title }} &mdash; {{ $application->listing->companyName() }}
                             </div>
                         @endforeach
                     </div>
@@ -140,7 +140,7 @@
                         @foreach($failedApplications as $application)
                             <div class="app-item">
                                 <span class="badge badge-red">Failed</span>
-                                {{ $application->listing->title }} &mdash; {{ $application->listing->company ?? 'Unknown' }}
+                                {{ $application->listing->title }} &mdash; {{ $application->listing->companyName() }}
                             </div>
                         @endforeach
                     </div>
@@ -154,7 +154,7 @@
                                 <a href="{{ route('filament.admin.resources.listings.view', $listing) }}" style="color: #2563eb; text-decoration: none;">
                                     {{ $listing->title }}
                                 </a>
-                                &mdash; {{ $listing->company ?? 'Unknown' }}
+                                &mdash; {{ $listing->companyName() }}
                             </div>
                         @endforeach
                     </div>

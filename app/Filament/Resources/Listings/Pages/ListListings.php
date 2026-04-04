@@ -33,8 +33,7 @@ class ListListings extends ListRecords
             'shortlisted' => Tab::make('Shortlisted')
                 ->icon('heroicon-o-clipboard-document-check')
                 ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->whereNotNull('shortlisted_at')
-                    ->doesntHave('applications')),
+                    ->shortlistedWithoutApplications()),
             'applied' => Tab::make('Applied')
                 ->icon('heroicon-o-check-circle')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('applications')),

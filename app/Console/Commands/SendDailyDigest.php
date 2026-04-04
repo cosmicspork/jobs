@@ -29,46 +29,39 @@ class SendDailyDigest extends Command
 
         $since = now()->subDay();
 
-        $relevantListings = Listing::query()
-            ->where('relevance', Relevance::Relevant)
+        $scoredListings = Listing::query()
+            ->whereIn('relevance', [Relevance::Relevant, Relevance::Maybe, Relevance::Irrelevant])
             ->where('scored_at', '>=', $since)
             ->latest('scored_at')
-            ->get();
+            ->get()
+            ->groupBy('relevance');
 
-        $maybeListings = Listing::query()
-            ->where('relevance', Relevance::Maybe)
-            ->where('scored_at', '>=', $since)
-            ->latest('scored_at')
-            ->get();
+        $relevantListings = $scoredListings->get(Relevance::Relevant->value, collect());
+        $maybeListings = $scoredListings->get(Relevance::Maybe->value, collect());
+        $irrelevantCount = $scoredListings->get(Relevance::Irrelevant->value, collect())->count();
 
-        $readyApplications = Application::query()
+        $applicationUpdates = Application::query()
             ->with('listing')
-            ->where('status', ApplicationStatus::Ready)
+            ->whereIn('status', [ApplicationStatus::Ready, ApplicationStatus::Failed])
             ->where('updated_at', '>=', $since)
-            ->get();
+            ->get()
+            ->groupBy('status');
 
-        $failedApplications = Application::query()
-            ->with('listing')
-            ->where('status', ApplicationStatus::Failed)
-            ->where('updated_at', '>=', $since)
-            ->get();
+        $readyApplications = $applicationUpdates->get(ApplicationStatus::Ready->value, collect());
+        $failedApplications = $applicationUpdates->get(ApplicationStatus::Failed->value, collect());
 
         $shortlistedWithoutApplications = Listing::query()
-            ->whereNotNull('shortlisted_at')
-            ->whereDoesntHave('applications')
+            ->shortlistedWithoutApplications()
             ->get();
-
-        $irrelevantCount = Listing::query()
-            ->where('relevance', Relevance::Irrelevant)
-            ->where('scored_at', '>=', $since)
-            ->count();
 
         $totalScraped = Listing::query()
             ->where('scraped_at', '>=', $since)
             ->count();
 
-        $aiUsage = AiUsage::query()
+        $aiUsageBreakdown = AiUsage::query()
             ->where('created_at', '>=', $since)
+            ->selectRaw('model, SUM(cost) as total_cost, COUNT(*) as requests')
+            ->groupBy('model')
             ->get();
 
         $stats = [
@@ -76,14 +69,14 @@ class SendDailyDigest extends Command
             'relevant_count' => $relevantListings->count(),
             'maybe_count' => $maybeListings->count(),
             'irrelevant_count' => $irrelevantCount,
-            'ai_total_cost' => $aiUsage->sum('cost'),
-            'ai_usage_breakdown' => $aiUsage->groupBy('model')->map(
-                fn ($group) => [
-                    'model' => AiUsage::shortModelName($group->first()->model),
-                    'cost' => $group->sum('cost'),
-                    'requests' => $group->count(),
+            'ai_total_cost' => $aiUsageBreakdown->sum('total_cost'),
+            'ai_usage_breakdown' => $aiUsageBreakdown->map(
+                fn ($row) => [
+                    'model' => AiUsage::shortModelName($row->model),
+                    'cost' => (float) $row->total_cost,
+                    'requests' => (int) $row->requests,
                 ]
-            )->values()->all(),
+            )->all(),
         ];
 
         Mail::to($recipient)->send(new DailyDigest(
