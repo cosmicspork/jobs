@@ -17,6 +17,7 @@ class ListingStats extends StatsOverviewWidget
         $today = today()->toDateString();
         $weekStart = now()->startOfWeek();
 
+        /** @var object{total: int, today: int, this_week: int, relevant: int, maybe: int, irrelevant: int, unscored: int} $listings */
         $listings = Listing::query()
             ->selectRaw('COUNT(*) as total')
             ->selectRaw('SUM(CASE WHEN DATE(scraped_at) = ? THEN 1 ELSE 0 END) as today', [$today])

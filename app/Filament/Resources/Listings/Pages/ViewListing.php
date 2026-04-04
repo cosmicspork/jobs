@@ -37,9 +37,16 @@ class ViewListing extends ViewRecord
                 ->label('Shortlist')
                 ->icon('heroicon-o-clipboard-document-check')
                 ->color('success')
-                ->visible(fn (): bool => ! $this->record->shortlisted_at)
+                ->visible(function (): bool {
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+
+                    return ! $listing->shortlisted_at;
+                })
                 ->action(function (): void {
-                    $this->record->shortlist();
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+                    $listing->shortlist();
 
                     Notification::make()
                         ->title('Listing shortlisted')
@@ -49,13 +56,32 @@ class ViewListing extends ViewRecord
             Action::make('applicationQuestions')
                 ->label('Application Questions')
                 ->icon('heroicon-o-chat-bubble-left-right')
-                ->url(fn (): string => ApplicationQuestions::getUrl(['listing' => $this->record->id])),
+                ->url(function (): string {
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+
+                    return ApplicationQuestions::getUrl(['listing' => $listing->id]);
+                }),
             $this->getToggleStarredAction(),
             EditAction::make(),
             Action::make('toggleRead')
-                ->label(fn (): string => $this->record->read_at ? 'Mark Unread' : 'Mark Read')
-                ->icon(fn (): string => $this->record->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
-                ->action(fn () => $this->record->toggleRead()),
+                ->label(function (): string {
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+
+                    return $listing->read_at ? 'Mark Unread' : 'Mark Read';
+                })
+                ->icon(function (): string {
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+
+                    return $listing->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open';
+                })
+                ->action(function (): void {
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+                    $listing->toggleRead();
+                }),
             $this->getJobLinkAction(),
         ];
     }

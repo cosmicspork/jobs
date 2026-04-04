@@ -51,10 +51,24 @@ trait HasListingActions
     protected function getToggleStarredAction(): Action
     {
         return Action::make('toggleStarred')
-            ->label(fn (): string => $this->record->starred_at ? 'Unstar' : 'Star')
-            ->icon(fn (): string => $this->record->starred_at ? 'heroicon-s-star' : 'heroicon-o-star')
+            ->label(function (): string {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                return $listing->starred_at ? 'Unstar' : 'Star';
+            })
+            ->icon(function (): string {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                return $listing->starred_at ? 'heroicon-s-star' : 'heroicon-o-star';
+            })
             ->color('warning')
-            ->action(fn () => $this->record->toggleStarred());
+            ->action(function (): void {
+                /** @var Listing $listing */
+                $listing = $this->record;
+                $listing->toggleStarred();
+            });
     }
 
     protected function getJobLinkAction(): Action
@@ -62,8 +76,18 @@ trait HasListingActions
         return Action::make('openUrl')
             ->label('Job Link')
             ->icon('heroicon-o-arrow-top-right-on-square')
-            ->url(fn (): ?string => $this->record->url)
+            ->url(function (): string {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                return $listing->url;
+            })
             ->openUrlInNewTab()
-            ->visible(fn (): bool => filled($this->record->url));
+            ->visible(function (): bool {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                return filled($listing->url);
+            });
     }
 }

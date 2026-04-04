@@ -16,7 +16,11 @@ class AiUsageBreakdownTable extends TableWidget
 
     public function getTableRecordKey(Model|array $record): string
     {
-        return $record->model.'|'.$record->agent;
+        if (is_array($record)) {
+            return $record['model'].'|'.$record['agent'];
+        }
+
+        return $record->getAttribute('model').'|'.$record->getAttribute('agent');
     }
 
     public function table(Table $table): Table
