@@ -31,7 +31,7 @@ class RelevanceByBoardChart extends ChartWidget
         $irrelevantData = [];
 
         foreach ($boards as $board => $records) {
-            $byRelevance = $records->keyBy(fn ($r) => $r->relevance->value);
+            $byRelevance = $records->keyBy('relevance');
             $total = $records->sum('count');
 
             $labels[] = $board === 'hn' ? 'Hacker News' : 'Larajobs';

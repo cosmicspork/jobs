@@ -41,7 +41,7 @@ class ApplicationQuestionsAgent implements Agent, HasStructuredOutput, HasTools
     public function schema(JsonSchema $schema): array
     {
         return [
-            'answers' => $schema->array(
+            'answers' => $schema->array()->items(
                 $schema->object([
                     'question_index' => $schema->integer()->required(),
                     'feedback' => $schema->string()->required(),

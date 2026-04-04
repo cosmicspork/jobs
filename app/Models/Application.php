@@ -68,10 +68,11 @@ class Application extends Model
     }
 
     /**
-     * @param  callable(static): ShouldQueue[]  $jobs
+     * @param  callable(self): array<ShouldQueue>  $jobs
      */
-    private static function dispatchGeneration(Listing $listing, callable $jobs): static
+    protected static function dispatchGeneration(Listing $listing, callable $jobs): static
     {
+        /** @var static $application */
         $application = static::firstOrCreate(
             ['listing_id' => $listing->id],
             ['status' => ApplicationStatus::Generating],
