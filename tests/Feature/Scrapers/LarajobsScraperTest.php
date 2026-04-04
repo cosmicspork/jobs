@@ -37,7 +37,7 @@ XML),
     ]);
 
     $scraper = new LarajobsScraper;
-    $listings = $scraper->scrape();
+    $listings = iterator_to_array($scraper->scrape());
 
     expect($listings)->toHaveCount(2)
         ->and($listings[0]['title'])->toBe('Senior Laravel Developer')
@@ -59,7 +59,7 @@ it('returns empty array on failed request', function () {
 
     $scraper = new LarajobsScraper;
 
-    expect($scraper->scrape())->toBeEmpty();
+    expect(iterator_to_array($scraper->scrape()))->toBeEmpty();
 });
 
 it('returns empty array on invalid xml', function () {
@@ -69,7 +69,7 @@ it('returns empty array on invalid xml', function () {
 
     $scraper = new LarajobsScraper;
 
-    expect($scraper->scrape())->toBeEmpty();
+    expect(iterator_to_array($scraper->scrape()))->toBeEmpty();
 });
 
 it('uses job:company from feed over title extraction', function () {
@@ -95,7 +95,7 @@ XML),
     ]);
 
     $scraper = new LarajobsScraper;
-    $listings = $scraper->scrape();
+    $listings = iterator_to_array($scraper->scrape());
 
     expect($listings[0]['company'])->toBe('CoolCo Official');
 });
@@ -118,7 +118,7 @@ XML),
     ]);
 
     $scraper = new LarajobsScraper;
-    $listings = $scraper->scrape();
+    $listings = iterator_to_array($scraper->scrape());
 
     expect($listings[0]['company'])->toBe('CoolCo');
 });

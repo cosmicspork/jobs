@@ -4,6 +4,7 @@ namespace App\Services\Scrapers;
 
 use DOMDocument;
 use DOMXPath;
+use Generator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -14,37 +15,41 @@ class HnHiringScraper implements ScraperInterface
     protected string $url = 'https://nchelluri.github.io/hnjobs/';
 
     /**
-     * @return array<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
+     * @return Generator<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
      */
-    public function scrape(): array
+    public function scrape(): Generator
     {
         $response = Http::get($this->url);
 
         if (! $response->ok()) {
-            return [];
+            return;
         }
 
-        $dom = new DOMDocument;
-        @$dom->loadHTML($response->body(), LIBXML_NOERROR);
-        $xpath = new DOMXPath($dom);
+        $html = $response->body();
+        unset($response);
 
+        $dom = new DOMDocument;
+        @$dom->loadHTML($html, LIBXML_NOERROR);
+        unset($html);
+
+        $xpath = new DOMXPath($dom);
         $comments = $xpath->query('//div[contains(@class, "content") and not(@style)]');
 
         if (! $comments || $comments->length === 0) {
-            return [];
+            return;
         }
 
-        $listings = [];
-
         foreach ($comments as $comment) {
+            if (! $comment instanceof \DOMElement) {
+                continue;
+            }
+
             $parsed = $this->parseComment($comment, $xpath);
 
             if ($parsed) {
-                $listings[] = $parsed;
+                yield $parsed;
             }
         }
-
-        return $listings;
     }
 
     /**
@@ -60,10 +65,10 @@ class HnHiringScraper implements ScraperInterface
         }
 
         $linkNode = $xpath->query('.//small/a[contains(@href, "news.ycombinator.com/item")]', $comment)->item(0);
-        $url = $linkNode ? $linkNode->getAttribute('href') : "https://news.ycombinator.com/item?id={$hnId}";
+        $url = $linkNode instanceof \DOMElement ? $linkNode->getAttribute('href') : "https://news.ycombinator.com/item?id={$hnId}";
 
-        $html = $comment->ownerDocument->saveHTML($comment);
-        $decoded = html_entity_decode($html);
+        $commentHtml = $comment->ownerDocument->saveHTML($comment);
+        $decoded = html_entity_decode($commentHtml);
         $decoded = preg_replace('/<br\s*\/?>/i', "\n", $decoded);
         $decoded = preg_replace('/<\/p>\s*<p>/i', "\n\n", $decoded);
         $decoded = preg_replace('/<\/?p>/i', "\n", $decoded);
@@ -103,7 +108,6 @@ class HnHiringScraper implements ScraperInterface
             'remote' => $remote,
             'raw_data' => [
                 'hn_id' => $hnId,
-                'html' => $html,
             ],
         ];
     }

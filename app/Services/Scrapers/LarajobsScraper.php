@@ -2,6 +2,7 @@
 
 namespace App\Services\Scrapers;
 
+use Generator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -12,27 +13,27 @@ class LarajobsScraper implements ScraperInterface
     protected string $feedUrl = 'https://larajobs.com/feed';
 
     /**
-     * @return array<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
+     * @return Generator<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
      */
-    public function scrape(): array
+    public function scrape(): Generator
     {
         $response = Http::get($this->feedUrl);
 
         if (! $response->ok()) {
-            return [];
+            return;
         }
 
         try {
             $xml = simplexml_load_string($response->body());
         } catch (\ErrorException) {
-            return [];
+            return;
         }
+
+        unset($response);
 
         if ($xml === false) {
-            return [];
+            return;
         }
-
-        $listings = [];
 
         foreach ($xml->channel->item as $item) {
             $job = $item->children('job', true);
@@ -58,7 +59,7 @@ class LarajobsScraper implements ScraperInterface
             $remote = Str::contains($searchable, 'remote', true);
             $salary = $this->parseSalary($salaryText ?: $searchable);
 
-            $listings[] = [
+            yield [
                 'title' => $title,
                 'company' => $company,
                 'url' => $link,
@@ -69,7 +70,6 @@ class LarajobsScraper implements ScraperInterface
                 'raw_data' => [
                     'title' => $title,
                     'link' => $link,
-                    'description' => (string) $item->description,
                     'pubDate' => (string) $item->pubDate,
                     'company' => $company,
                     'location' => $location,
@@ -79,8 +79,6 @@ class LarajobsScraper implements ScraperInterface
                 ],
             ];
         }
-
-        return $listings;
     }
 
     protected function extractCompany(string $title): string

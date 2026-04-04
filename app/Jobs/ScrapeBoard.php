@@ -23,11 +23,10 @@ class ScrapeBoard implements ShouldQueue
         /** @var ScraperInterface $scraper */
         $scraper = app($this->scraperClass);
 
-        $listings = $scraper->scrape();
-
+        $total = 0;
         $created = 0;
 
-        foreach ($listings as $data) {
+        foreach ($scraper->scrape() as $data) {
             $listing = Listing::query()->updateOrCreate(
                 ['url' => $data['url']],
                 [
@@ -46,8 +45,10 @@ class ScrapeBoard implements ShouldQueue
             if ($listing->wasRecentlyCreated) {
                 $created++;
             }
+
+            $total++;
         }
 
-        Log::info("Scraped {$this->boardKey}: ".count($listings)." listings found, {$created} new.");
+        Log::info("Scraped {$this->boardKey}: {$total} listings found, {$created} new.");
     }
 }
