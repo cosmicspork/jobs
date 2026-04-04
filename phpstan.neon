@@ -1,0 +1,28 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/nesbot/carbon/extension.neon
+
+parameters:
+    parallel:
+        maximumNumberOfProcesses: 6
+
+    level: 5
+
+    paths:
+        - app
+        - bootstrap/app.php
+        - config
+        - routes
+        - database/factories
+        - database/seeders
+
+    excludePaths:
+        - database/migrations
+        - bootstrap/cache
+        - public
+        - resources
+        - storage
+        - vendor
+        - tests
+
+    reportUnmatchedIgnoredErrors: true
