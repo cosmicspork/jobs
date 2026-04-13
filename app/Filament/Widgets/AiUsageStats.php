@@ -17,6 +17,7 @@ class AiUsageStats extends StatsOverviewWidget
 
         /** @var object{total_cost: float|null, today_cost: float|null, week_cost: float|null, total_requests: int, today_requests: int, week_requests: int, total_tokens: int|null, today_tokens: int|null, week_tokens: int|null} $stats */
         $stats = AiUsage::query()
+            ->where('user_id', auth()->id())
             ->selectRaw('SUM(cost) as total_cost')
             ->selectRaw('SUM(CASE WHEN DATE(created_at) = ? THEN cost ELSE 0 END) as today_cost', [$today])
             ->selectRaw('SUM(CASE WHEN created_at >= ? THEN cost ELSE 0 END) as week_cost', [$weekStart])

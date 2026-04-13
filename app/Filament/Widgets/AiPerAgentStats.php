@@ -15,6 +15,7 @@ class AiPerAgentStats extends StatsOverviewWidget
     protected function getStats(): array
     {
         $agents = AiUsage::query()
+            ->where('user_id', auth()->id())
             ->selectRaw('agent, COUNT(*) as requests, AVG(prompt_tokens + completion_tokens) as avg_tokens, AVG(cost) as avg_cost')
             ->groupBy('agent')
             ->get()

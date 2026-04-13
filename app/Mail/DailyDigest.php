@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -20,6 +21,7 @@ class DailyDigest extends Mailable
      * @param  array{total_scraped: int, relevant_count: int, maybe_count: int, irrelevant_count: int, ai_total_cost: float, ai_usage_breakdown: array<int, array{model: string, cost: float, requests: int}>}  $stats
      */
     public function __construct(
+        public readonly User $user,
         public readonly Collection $relevantListings,
         public readonly Collection $maybeListings,
         public readonly Collection $readyApplications,

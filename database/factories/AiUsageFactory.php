@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\AiUsage;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -30,6 +31,7 @@ class AiUsageFactory extends Factory
             + ($cacheReadTokens / 1_000_000) * $pricing['cacheRead'];
 
         return [
+            'user_id' => User::factory(),
             'agent' => $agent,
             'provider' => 'anthropic',
             'model' => $model,

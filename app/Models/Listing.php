@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use App\Relevance;
 use Database\Factories\ListingFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Listing extends Model
@@ -25,14 +24,22 @@ class Listing extends Model
         'remote',
         'board',
         'raw_data',
-        'relevance',
-        'score_data',
-        'scored_at',
         'scraped_at',
-        'read_at',
-        'starred_at',
-        'shortlisted_at',
     ];
+
+    /**
+     * @return BelongsToMany<User, $this>
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'listing_user')
+            ->using(ListingUser::class)
+            ->withPivot([
+                'id', 'relevance', 'score_data', 'scored_at',
+                'read_at', 'starred_at', 'shortlisted_at',
+            ])
+            ->withTimestamps();
+    }
 
     /**
      * @return HasMany<Application, $this>
@@ -50,38 +57,9 @@ class Listing extends Model
         return $this->hasMany(ApplicationQuestionSet::class);
     }
 
-    /**
-     * @param  Builder<self>  $query
-     * @return Builder<self>
-     */
     public function companyName(): string
     {
         return $this->company ?? 'Unknown';
-    }
-
-    /**
-     * @param  Builder<self>  $query
-     * @return Builder<self>
-     */
-    public function scopeShortlistedWithoutApplications(Builder $query): Builder
-    {
-        return $query->whereNotNull('shortlisted_at')
-            ->whereDoesntHave('applications');
-    }
-
-    public function toggleRead(): void
-    {
-        $this->update(['read_at' => $this->read_at ? null : now()]);
-    }
-
-    public function toggleStarred(): void
-    {
-        $this->update(['starred_at' => $this->starred_at ? null : now()]);
-    }
-
-    public function shortlist(): void
-    {
-        $this->update(['shortlisted_at' => now()]);
     }
 
     /**
@@ -91,14 +69,8 @@ class Listing extends Model
     {
         return [
             'raw_data' => 'array',
-            'score_data' => 'array',
-            'relevance' => Relevance::class,
             'remote' => 'boolean',
-            'scored_at' => 'datetime',
             'scraped_at' => 'datetime',
-            'read_at' => 'datetime',
-            'starred_at' => 'datetime',
-            'shortlisted_at' => 'datetime',
         ];
     }
 }

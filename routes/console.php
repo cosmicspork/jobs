@@ -1,28 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('jobs:scrape')->hourly();
 Schedule::command('digest:send')->dailyAt('08:00');
-
-Artisan::command('app:generate-token', function (): void {
-    $token = base64_encode(random_bytes(32));
-
-    $path = base_path('.env');
-    $contents = file_get_contents($path);
-
-    if (str_contains($contents, 'APP_TOKEN=')) {
-        $contents = preg_replace('/^APP_TOKEN=.*/m', "APP_TOKEN={$token}", $contents);
-    } else {
-        $contents .= "\nAPP_TOKEN={$token}\n";
-    }
-
-    file_put_contents($path, $contents);
-
-    $this->info("Token generated: {$token}");
-    $this->info('APP_TOKEN has been written to .env');
-})->purpose('Generate a new APP_TOKEN and write it to .env');
 
 Artisan::command('db:export', function (): void {
     $exportPath = storage_path('app');

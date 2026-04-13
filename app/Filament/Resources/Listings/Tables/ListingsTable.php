@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Listings\Tables;
 
 use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Models\Listing;
+use App\Models\ListingUser;
 use App\Relevance;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -20,14 +21,35 @@ class ListingsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->withCount('applications'))
+            ->modifyQueryUsing(function ($query) {
+                $userId = auth()->id();
+
+                return $query
+                    ->join('listing_user', function ($join) use ($userId) {
+                        $join->on('listings.id', '=', 'listing_user.listing_id')
+                            ->where('listing_user.user_id', '=', $userId);
+                    })
+                    ->withCount(['applications' => fn ($q) => $q->where('user_id', $userId)])
+                    ->select([
+                        'listings.*',
+                        'listing_user.id as pivot_id',
+                        'listing_user.relevance',
+                        'listing_user.score_data',
+                        'listing_user.scored_at',
+                        'listing_user.read_at',
+                        'listing_user.starred_at',
+                        'listing_user.shortlisted_at',
+                    ]);
+            })
             ->columns([
                 IconColumn::make('starred_at')
                     ->label('')
                     ->state(fn (Listing $record): bool => (bool) $record->starred_at)
                     ->icon(fn (Listing $record): string => $record->starred_at ? 'heroicon-s-star' : 'heroicon-o-star')
                     ->color(fn (Listing $record): string => $record->starred_at ? 'warning' : 'gray')
-                    ->action(fn (Listing $record) => $record->toggleStarred())
+                    ->action(function (Listing $record): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->toggleStarred();
+                    })
                     ->grow(false),
                 IconColumn::make('shortlisted_at')
                     ->label('Shortlisted')
@@ -63,31 +85,34 @@ class ListingsTable
                 TernaryFilter::make('scored')
                     ->label('Scored')
                     ->queries(
-                        true: fn ($query) => $query->whereNotNull('scored_at'),
-                        false: fn ($query) => $query->whereNull('scored_at'),
+                        true: fn ($query) => $query->whereNotNull('listing_user.scored_at'),
+                        false: fn ($query) => $query->whereNull('listing_user.scored_at'),
                     ),
                 TernaryFilter::make('read')
                     ->label('Read')
                     ->queries(
-                        true: fn ($query) => $query->whereNotNull('read_at'),
-                        false: fn ($query) => $query->whereNull('read_at'),
+                        true: fn ($query) => $query->whereNotNull('listing_user.read_at'),
+                        false: fn ($query) => $query->whereNull('listing_user.read_at'),
                     ),
                 TernaryFilter::make('starred')
                     ->label('Starred')
                     ->queries(
-                        true: fn ($query) => $query->whereNotNull('starred_at'),
-                        false: fn ($query) => $query->whereNull('starred_at'),
+                        true: fn ($query) => $query->whereNotNull('listing_user.starred_at'),
+                        false: fn ($query) => $query->whereNull('listing_user.starred_at'),
                     ),
                 SelectFilter::make('board')
                     ->options(fn () => collect(config('boards'))->mapWithKeys(fn ($board, $key) => [$key => $board['name']])),
                 SelectFilter::make('relevance')
-                    ->options(Relevance::class),
+                    ->options(Relevance::class)
+                    ->query(fn ($query, $data) => $data['value'] ? $query->where('listing_user.relevance', $data['value']) : $query),
             ])
             ->recordActions([
                 Action::make('toggleRead')
                     ->label(fn (Listing $record): string => $record->read_at ? 'Mark Unread' : 'Mark Read')
                     ->icon(fn (Listing $record): string => $record->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
-                    ->action(fn (Listing $record) => $record->toggleRead()),
+                    ->action(function (Listing $record): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->toggleRead();
+                    }),
                 ViewAction::make(),
             ])
             ->toolbarActions([
@@ -95,8 +120,9 @@ class ListingsTable
                     ->label('Mark Page as Read')
                     ->icon('heroicon-o-envelope-open')
                     ->action(function (Table $table): void {
-                        Listing::query()
-                            ->whereIn('id', $table->getRecords()->pluck('id'))
+                        ListingUser::query()
+                            ->whereIn('listing_id', $table->getRecords()->pluck('id'))
+                            ->where('user_id', auth()->id())
                             ->whereNull('read_at')
                             ->update(['read_at' => now()]);
                     }),

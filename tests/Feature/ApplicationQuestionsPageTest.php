@@ -10,6 +10,10 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    $this->user = login();
+});
+
 it('renders the page', function () {
     $this->get(route('filament.admin.pages.application-questions'))
         ->assertSuccessful();
@@ -24,7 +28,10 @@ it('renders with a listing query param', function () {
 
 it('loads an existing question set for a listing', function () {
     $listing = Listing::factory()->create();
-    $set = ApplicationQuestionSet::factory()->reviewed()->create(['listing_id' => $listing->id]);
+    $set = ApplicationQuestionSet::factory()->reviewed()->create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+    ]);
     ApplicationQuestion::factory()->reviewed()->create([
         'question_set_id' => $set->id,
         'question' => 'Why do you want this role?',
@@ -44,7 +51,9 @@ it('shows the input form when no existing question set', function () {
 });
 
 it('can reset the form', function () {
-    $set = ApplicationQuestionSet::factory()->reviewed()->create();
+    $set = ApplicationQuestionSet::factory()->reviewed()->create([
+        'user_id' => $this->user->id,
+    ]);
     ApplicationQuestion::factory()->reviewed()->create(['question_set_id' => $set->id]);
 
     Livewire::withQueryParams(['listing' => $set->listing_id])
@@ -56,7 +65,9 @@ it('can reset the form', function () {
 });
 
 it('can save final answers', function () {
-    $set = ApplicationQuestionSet::factory()->reviewed()->create();
+    $set = ApplicationQuestionSet::factory()->reviewed()->create([
+        'user_id' => $this->user->id,
+    ]);
     $question = ApplicationQuestion::factory()->reviewed()->create([
         'question_set_id' => $set->id,
         'suggested_answer' => 'Original suggestion',

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\ApplicationQuestionSet;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,6 +19,7 @@ class ApplicationQuestionSetFactory extends Factory
     {
         return [
             'listing_id' => Listing::factory(),
+            'user_id' => User::factory(),
             'status' => 'draft',
         ];
     }

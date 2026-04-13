@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\ScoreListing;
-use App\Models\Listing;
+use App\Models\ListingUser;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -16,11 +16,12 @@ class ScoreListings extends Command
     {
         $count = 0;
 
-        Listing::query()
+        ListingUser::query()
             ->whereNull('scored_at')
-            ->chunkById(100, function ($listings) use (&$count) {
-                foreach ($listings as $listing) {
-                    ScoreListing::dispatch($listing);
+            ->with(['listing', 'user'])
+            ->chunkById(100, function ($pivots) use (&$count) {
+                foreach ($pivots as $pivot) {
+                    ScoreListing::dispatch($pivot->listing, $pivot->user);
                     $count++;
                 }
             });
@@ -31,7 +32,7 @@ class ScoreListings extends Command
             return self::SUCCESS;
         }
 
-        $this->info("Dispatched scoring for {$count} listings.");
+        $this->info("Dispatched scoring for {$count} listing-user pairs.");
 
         return self::SUCCESS;
     }

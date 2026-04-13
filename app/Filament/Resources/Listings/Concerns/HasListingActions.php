@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Listings\Concerns;
 
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\ListingUser;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 
@@ -20,7 +21,7 @@ trait HasListingActions
                 ->action(function (): void {
                     /** @var Listing $listing */
                     $listing = $this->record;
-                    Application::generateResume($listing);
+                    Application::generateResume($listing, auth()->user());
                     Notification::make()->title('Resume generation started')->body("Generating resume for {$listing->company}...")->success()->send();
                 }),
             Action::make('generateCoverLetter')
@@ -31,7 +32,7 @@ trait HasListingActions
                 ->action(function (): void {
                     /** @var Listing $listing */
                     $listing = $this->record;
-                    Application::generateCoverLetter($listing);
+                    Application::generateCoverLetter($listing, auth()->user());
                     Notification::make()->title('Cover letter generation started')->body("Generating cover letter for {$listing->company}...")->success()->send();
                 }),
             Action::make('generateBoth')
@@ -42,7 +43,7 @@ trait HasListingActions
                 ->action(function (): void {
                     /** @var Listing $listing */
                     $listing = $this->record;
-                    Application::generateBoth($listing);
+                    Application::generateBoth($listing, auth()->user());
                     Notification::make()->title('Application generation started')->body("Generating resume and cover letter for {$listing->company}...")->success()->send();
                 }),
         ];
@@ -50,24 +51,14 @@ trait HasListingActions
 
     protected function getToggleStarredAction(): Action
     {
+        $pivot = $this->getUserPivotForAction();
+
         return Action::make('toggleStarred')
-            ->label(function (): string {
-                /** @var Listing $listing */
-                $listing = $this->record;
-
-                return $listing->starred_at ? 'Unstar' : 'Star';
-            })
-            ->icon(function (): string {
-                /** @var Listing $listing */
-                $listing = $this->record;
-
-                return $listing->starred_at ? 'heroicon-s-star' : 'heroicon-o-star';
-            })
+            ->label($pivot?->starred_at ? 'Unstar' : 'Star')
+            ->icon($pivot?->starred_at ? 'heroicon-s-star' : 'heroicon-o-star')
             ->color('warning')
             ->action(function (): void {
-                /** @var Listing $listing */
-                $listing = $this->record;
-                $listing->toggleStarred();
+                $this->getUserPivotForAction()?->toggleStarred();
             });
     }
 
@@ -89,5 +80,10 @@ trait HasListingActions
 
                 return filled($listing->url);
             });
+    }
+
+    private function getUserPivotForAction(): ?ListingUser
+    {
+        return ListingUser::forUserListing(auth()->id(), $this->record->getKey());
     }
 }

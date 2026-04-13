@@ -3,6 +3,7 @@
 use App\Ai\Agents\JobScorerAgent;
 use App\Listeners\LogAiUsage;
 use App\Models\AiUsage;
+use App\Models\User;
 use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -14,13 +15,18 @@ function buildEvent(Usage $usage, Meta $meta): AgentPrompted
 {
     $response = new AgentResponse('inv-1', '{}', $usage, $meta);
 
-    $agent = new JobScorerAgent;
+    $user = User::factory()->create();
+    $agent = new JobScorerAgent($user);
     $provider = Mockery::mock(TextProvider::class);
 
     $prompt = new AgentPrompt($agent, 'test', [], $provider, $meta->model ?? 'test');
 
     return new AgentPrompted('inv-1', $prompt, $response);
 }
+
+beforeEach(function () {
+    login();
+});
 
 it('logs ai usage from an AgentPrompted event', function () {
     $usage = new Usage(

@@ -21,9 +21,10 @@ class GenerateCoverLetter implements ShouldQueue
     public function handle(): void
     {
         $listing = $this->application->listing;
-        $profile = config('profile');
+        $user = $this->application->user;
+        $profile = $user->getProfileData();
 
-        $response = (new CoverLetterAgent)->prompt(
+        $response = (new CoverLetterAgent($user))->prompt(
             "Write a cover letter for this job posting (listing_id: {$listing->id})."
         );
 

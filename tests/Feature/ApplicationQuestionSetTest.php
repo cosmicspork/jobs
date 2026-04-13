@@ -8,6 +8,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    login();
+});
+
 it('uses ulids for primary key', function () {
     $set = ApplicationQuestionSet::factory()->create();
 

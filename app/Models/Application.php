@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Bus;
 
+/** @property User $user */
 class Application extends Model
 {
     /** @use HasFactory<ApplicationFactory> */
@@ -20,6 +21,7 @@ class Application extends Model
 
     protected $fillable = [
         'listing_id',
+        'user_id',
         'status',
         'resume_path',
         'cover_letter_path',
@@ -34,23 +36,31 @@ class Application extends Model
         return $this->belongsTo(Listing::class);
     }
 
-    public static function generateResume(Listing $listing): static
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
     {
-        return static::dispatchGeneration($listing, fn ($app) => [
+        return $this->belongsTo(User::class);
+    }
+
+    public static function generateResume(Listing $listing, User $user): static
+    {
+        return static::dispatchGeneration($listing, $user, fn ($app) => [
             new GenerateResume($app),
         ]);
     }
 
-    public static function generateCoverLetter(Listing $listing): static
+    public static function generateCoverLetter(Listing $listing, User $user): static
     {
-        return static::dispatchGeneration($listing, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, fn ($app) => [
             new GenerateCoverLetter($app),
         ]);
     }
 
-    public static function generateBoth(Listing $listing): static
+    public static function generateBoth(Listing $listing, User $user): static
     {
-        return static::dispatchGeneration($listing, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, fn ($app) => [
             new GenerateResume($app),
             new GenerateCoverLetter($app),
         ]);
@@ -70,11 +80,11 @@ class Application extends Model
     /**
      * @param  callable(self): array<ShouldQueue>  $jobs
      */
-    protected static function dispatchGeneration(Listing $listing, callable $jobs): static
+    protected static function dispatchGeneration(Listing $listing, User $user, callable $jobs): static
     {
         /** @var static $application */
         $application = static::firstOrCreate(
-            ['listing_id' => $listing->id],
+            ['listing_id' => $listing->id, 'user_id' => $user->id],
             ['status' => ApplicationStatus::Generating],
         );
 

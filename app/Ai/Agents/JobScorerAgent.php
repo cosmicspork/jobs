@@ -4,6 +4,7 @@ namespace App\Ai\Agents;
 
 use App\Ai\Tools\GetJobPosting;
 use App\Ai\Tools\GetProfile;
+use App\Models\User;
 use App\Relevance;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
@@ -23,9 +24,11 @@ class JobScorerAgent implements Agent, HasStructuredOutput, HasTools
 {
     use Promptable;
 
+    public function __construct(public User $user) {}
+
     public function instructions(): Stringable|string
     {
-        return config('profile.prompts.scorer');
+        return $this->user->getPrompt('scorer');
     }
 
     /**
@@ -34,7 +37,7 @@ class JobScorerAgent implements Agent, HasStructuredOutput, HasTools
     public function tools(): iterable
     {
         return [
-            new GetProfile,
+            new GetProfile($this->user),
             new GetJobPosting,
         ];
     }

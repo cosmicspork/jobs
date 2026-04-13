@@ -28,6 +28,7 @@ class AiUsageBreakdownTable extends TableWidget
         return $table
             ->query(
                 AiUsage::query()
+                    ->where('user_id', auth()->id())
                     ->selectRaw('model, agent, COUNT(*) as requests, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, SUM(prompt_tokens + completion_tokens) as total_tokens, SUM(cost) as total_cost')
                     ->groupBy('model', 'agent')
                     ->orderByDesc('total_cost')

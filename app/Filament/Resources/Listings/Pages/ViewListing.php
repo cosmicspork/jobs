@@ -6,6 +6,7 @@ use App\Filament\Pages\ApplicationQuestions;
 use App\Filament\Resources\Listings\Concerns\HasListingActions;
 use App\Filament\Resources\Listings\ListingResource;
 use App\Models\Listing;
+use App\Models\ListingUser;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -21,11 +22,10 @@ class ViewListing extends ViewRecord
     {
         parent::mount($record);
 
-        /** @var Listing $listing */
-        $listing = $this->record;
+        $pivot = $this->getUserPivot();
 
-        if (! $listing->read_at) {
-            $listing->update(['read_at' => now()]);
+        if ($pivot && ! $pivot->read_at) {
+            $pivot->update(['read_at' => now()]);
         }
     }
 
@@ -37,16 +37,9 @@ class ViewListing extends ViewRecord
                 ->label('Shortlist')
                 ->icon('heroicon-o-clipboard-document-check')
                 ->color('success')
-                ->visible(function (): bool {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-
-                    return ! $listing->shortlisted_at;
-                })
+                ->visible(fn (): bool => (bool) $this->getUserPivot()?->shortlisted_at === false)
                 ->action(function (): void {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-                    $listing->shortlist();
+                    $this->getUserPivot()?->shortlist();
 
                     Notification::make()
                         ->title('Listing shortlisted')
@@ -65,24 +58,17 @@ class ViewListing extends ViewRecord
             $this->getToggleStarredAction(),
             EditAction::make(),
             Action::make('toggleRead')
-                ->label(function (): string {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-
-                    return $listing->read_at ? 'Mark Unread' : 'Mark Read';
-                })
-                ->icon(function (): string {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-
-                    return $listing->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open';
-                })
+                ->label(fn (): string => $this->getUserPivot()?->read_at ? 'Mark Unread' : 'Mark Read')
+                ->icon(fn (): string => $this->getUserPivot()?->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
                 ->action(function (): void {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-                    $listing->toggleRead();
+                    $this->getUserPivot()?->toggleRead();
                 }),
             $this->getJobLinkAction(),
         ];
+    }
+
+    private function getUserPivot(): ?ListingUser
+    {
+        return ListingUser::forUserListing(auth()->id(), $this->record->getKey());
     }
 }

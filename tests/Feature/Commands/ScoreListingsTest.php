@@ -2,12 +2,24 @@
 
 use App\Jobs\ScoreListing;
 use App\Models\Listing;
+use App\Models\ListingUser;
+use App\Relevance;
 use Illuminate\Support\Facades\Queue;
 
-it('dispatches scoring jobs for unscored listings', function () {
+beforeEach(function () {
+    $this->user = login();
+});
+
+it('dispatches scoring jobs for unscored listing-user pairs', function () {
     Queue::fake();
 
-    Listing::factory()->count(3)->create();
+    $listings = Listing::factory()->count(3)->create();
+    foreach ($listings as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+        ]);
+    }
 
     $this->artisan('jobs:score')
         ->assertSuccessful();
@@ -15,11 +27,22 @@ it('dispatches scoring jobs for unscored listings', function () {
     Queue::assertPushed(ScoreListing::class, 3);
 });
 
-it('skips already scored listings', function () {
+it('skips already scored listing-user pairs', function () {
     Queue::fake();
 
-    Listing::factory()->scored()->create();
-    Listing::factory()->create();
+    $scoredListing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $scoredListing->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+    ]);
+
+    $unscoredListing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $unscoredListing->id,
+        'user_id' => $this->user->id,
+    ]);
 
     $this->artisan('jobs:score')
         ->assertSuccessful();

@@ -2,6 +2,8 @@
 
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\ListingUser;
+use App\Relevance;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 
@@ -12,17 +14,31 @@ it('uses ulids as primary keys', function () {
 });
 
 it('has many applications', function () {
+    $user = login();
     $listing = Listing::factory()->create();
-    Application::factory()->count(3)->create(['listing_id' => $listing->id]);
+    Application::factory()->count(3)->create(['listing_id' => $listing->id, 'user_id' => $user->id]);
 
     expect($listing->applications)->toHaveCount(3);
 });
 
-it('casts score_data to array', function () {
-    $listing = Listing::factory()->scored()->create();
+it('casts score_data to array on pivot', function () {
+    $user = login();
+    $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'relevance' => Relevance::Relevant,
+        'score_data' => [
+            'matched_skills' => ['PHP', 'Laravel'],
+            'gaps' => ['Go'],
+            'reasoning' => 'Good match for a Laravel developer.',
+            'role_type' => 'ic',
+        ],
+        'scored_at' => now(),
+    ]);
 
-    expect($listing->score_data)->toBeArray()
-        ->and($listing->score_data['matched_skills'])->toContain('PHP');
+    expect($pivot->score_data)->toBeArray()
+        ->and($pivot->score_data['matched_skills'])->toContain('PHP');
 });
 
 it('casts remote to boolean', function () {
@@ -31,10 +47,16 @@ it('casts remote to boolean', function () {
     expect($listing->remote)->toBeTrue();
 });
 
-it('casts scored_at to datetime', function () {
-    $listing = Listing::factory()->scored()->create();
+it('casts scored_at to datetime on pivot', function () {
+    $user = login();
+    $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'scored_at' => now(),
+    ]);
 
-    expect($listing->scored_at)->toBeInstanceOf(Carbon::class);
+    expect($pivot->scored_at)->toBeInstanceOf(Carbon::class);
 });
 
 it('deduplicates listings by url', function () {
@@ -44,29 +66,39 @@ it('deduplicates listings by url', function () {
         ->toThrow(UniqueConstraintViolationException::class);
 });
 
-it('toggles starred state', function () {
+it('toggles starred state on pivot', function () {
+    $user = login();
     $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+    ]);
 
-    expect($listing->starred_at)->toBeNull();
+    expect($pivot->starred_at)->toBeNull();
 
-    $listing->toggleStarred();
-    $listing->refresh();
+    $pivot->toggleStarred();
+    $pivot->refresh();
 
-    expect($listing->starred_at)->toBeInstanceOf(Carbon::class);
+    expect($pivot->starred_at)->toBeInstanceOf(Carbon::class);
 
-    $listing->toggleStarred();
-    $listing->refresh();
+    $pivot->toggleStarred();
+    $pivot->refresh();
 
-    expect($listing->starred_at)->toBeNull();
+    expect($pivot->starred_at)->toBeNull();
 });
 
-it('can be shortlisted', function () {
+it('can be shortlisted on pivot', function () {
+    $user = login();
     $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+    ]);
 
-    expect($listing->shortlisted_at)->toBeNull();
+    expect($pivot->shortlisted_at)->toBeNull();
 
-    $listing->shortlist();
-    $listing->refresh();
+    $pivot->shortlist();
+    $pivot->refresh();
 
-    expect($listing->shortlisted_at)->toBeInstanceOf(Carbon::class);
+    expect($pivot->shortlisted_at)->toBeInstanceOf(Carbon::class);
 });

@@ -6,7 +6,8 @@ use App\ApplicationStatus;
 use App\Mail\DailyDigest;
 use App\Models\AiUsage;
 use App\Models\Application;
-use App\Models\Listing;
+use App\Models\ListingUser;
+use App\Models\User;
 use App\Relevance;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -19,76 +20,96 @@ class SendDailyDigest extends Command
 {
     public function handle(): int
     {
-        $recipient = config('profile.email');
+        $users = User::where('digest_enabled', true)->get();
 
-        if (! $recipient) {
-            $this->error('No profile email configured. Set PROFILE_EMAIL in .env.');
+        if ($users->isEmpty()) {
+            $this->info('No users with digest enabled.');
 
-            return self::FAILURE;
+            return self::SUCCESS;
         }
 
         $since = now()->subDay();
+        $sent = 0;
 
-        $scoredListings = Listing::query()
-            ->whereIn('relevance', [Relevance::Relevant, Relevance::Maybe, Relevance::Irrelevant])
-            ->where('scored_at', '>=', $since)
-            ->latest('scored_at')
-            ->get()
-            ->groupBy('relevance');
+        foreach ($users as $user) {
+            $scoredPivots = ListingUser::query()
+                ->where('user_id', $user->id)
+                ->whereIn('relevance', [Relevance::Relevant->value, Relevance::Maybe->value, Relevance::Irrelevant->value])
+                ->where('scored_at', '>=', $since)
+                ->with('listing')
+                ->latest('scored_at')
+                ->get()
+                ->groupBy('relevance');
 
-        $relevantListings = $scoredListings->get(Relevance::Relevant->value, collect());
-        $maybeListings = $scoredListings->get(Relevance::Maybe->value, collect());
-        $irrelevantCount = $scoredListings->get(Relevance::Irrelevant->value, collect())->count();
+            $relevantListings = $scoredPivots->get(Relevance::Relevant->value, collect())->map(function ($pivot) {
+                $listing = $pivot->listing;
+                $listing->setAttribute('score_data', $pivot->score_data);
 
-        $applicationUpdates = Application::query()
-            ->with('listing')
-            ->whereIn('status', [ApplicationStatus::Ready, ApplicationStatus::Failed])
-            ->where('updated_at', '>=', $since)
-            ->get()
-            ->groupBy('status');
+                return $listing;
+            });
+            $maybeListings = $scoredPivots->get(Relevance::Maybe->value, collect())->pluck('listing');
+            $irrelevantCount = $scoredPivots->get(Relevance::Irrelevant->value, collect())->count();
 
-        $readyApplications = $applicationUpdates->get(ApplicationStatus::Ready->value, collect());
-        $failedApplications = $applicationUpdates->get(ApplicationStatus::Failed->value, collect());
+            $applicationUpdates = Application::query()
+                ->where('user_id', $user->id)
+                ->with('listing')
+                ->whereIn('status', [ApplicationStatus::Ready, ApplicationStatus::Failed])
+                ->where('updated_at', '>=', $since)
+                ->get()
+                ->groupBy('status');
 
-        $shortlistedWithoutApplications = Listing::query()
-            ->shortlistedWithoutApplications()
-            ->get();
+            $readyApplications = $applicationUpdates->get(ApplicationStatus::Ready->value, collect());
+            $failedApplications = $applicationUpdates->get(ApplicationStatus::Failed->value, collect());
 
-        $totalScraped = Listing::query()
-            ->where('scraped_at', '>=', $since)
-            ->count();
+            $shortlistedWithoutApplications = ListingUser::query()
+                ->where('user_id', $user->id)
+                ->whereNotNull('shortlisted_at')
+                ->with('listing')
+                ->whereDoesntHave('listing.applications', fn ($q) => $q->where('user_id', $user->id))
+                ->get()
+                ->pluck('listing');
 
-        $aiUsageBreakdown = AiUsage::query()
-            ->where('created_at', '>=', $since)
-            ->selectRaw('model, SUM(cost) as total_cost, COUNT(*) as requests')
-            ->groupBy('model')
-            ->get();
+            $totalScraped = ListingUser::query()
+                ->where('user_id', $user->id)
+                ->where('created_at', '>=', $since)
+                ->count();
 
-        $stats = [
-            'total_scraped' => $totalScraped,
-            'relevant_count' => $relevantListings->count(),
-            'maybe_count' => $maybeListings->count(),
-            'irrelevant_count' => $irrelevantCount,
-            'ai_total_cost' => $aiUsageBreakdown->sum('total_cost'),
-            'ai_usage_breakdown' => $aiUsageBreakdown->map(
-                fn ($row) => [
-                    'model' => AiUsage::shortModelName($row->model),
-                    'cost' => (float) $row->total_cost,
-                    'requests' => (int) $row->requests,
-                ]
-            )->all(),
-        ];
+            $aiUsageBreakdown = AiUsage::query()
+                ->where('user_id', $user->id)
+                ->where('created_at', '>=', $since)
+                ->selectRaw('model, SUM(cost) as total_cost, COUNT(*) as requests')
+                ->groupBy('model')
+                ->get();
 
-        Mail::to($recipient)->send(new DailyDigest(
-            relevantListings: $relevantListings,
-            maybeListings: $maybeListings,
-            readyApplications: $readyApplications,
-            failedApplications: $failedApplications,
-            shortlistedWithoutApplications: $shortlistedWithoutApplications,
-            stats: $stats,
-        ));
+            $stats = [
+                'total_scraped' => $totalScraped,
+                'relevant_count' => $relevantListings->count(),
+                'maybe_count' => $maybeListings->count(),
+                'irrelevant_count' => $irrelevantCount,
+                'ai_total_cost' => $aiUsageBreakdown->sum('total_cost'),
+                'ai_usage_breakdown' => $aiUsageBreakdown->map(
+                    fn ($row) => [
+                        'model' => AiUsage::shortModelName($row->model),
+                        'cost' => (float) $row->total_cost,
+                        'requests' => (int) $row->requests,
+                    ]
+                )->all(),
+            ];
 
-        $this->info('Daily digest sent to '.$recipient);
+            Mail::to($user->email)->send(new DailyDigest(
+                user: $user,
+                relevantListings: $relevantListings,
+                maybeListings: $maybeListings,
+                readyApplications: $readyApplications,
+                failedApplications: $failedApplications,
+                shortlistedWithoutApplications: $shortlistedWithoutApplications,
+                stats: $stats,
+            ));
+
+            $sent++;
+        }
+
+        $this->info("Daily digest sent to {$sent} user(s).");
 
         return self::SUCCESS;
     }

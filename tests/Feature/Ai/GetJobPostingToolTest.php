@@ -5,6 +5,10 @@ use App\Models\Listing;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Laravel\Ai\Tools\Request;
 
+beforeEach(function () {
+    login();
+});
+
 it('returns listing details as json', function () {
     $listing = Listing::factory()->create([
         'title' => 'Laravel Developer',

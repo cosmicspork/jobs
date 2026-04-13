@@ -1,7 +1,19 @@
 <?php
 
-it('has all required top-level keys', function () {
-    $profile = config('profile');
+use App\Models\User;
+
+it('has all required top-level keys from getProfileData', function () {
+    $user = User::factory()->create([
+        'summaries' => ['em' => 'EM summary', 'ic' => 'IC summary'],
+        'leadership_skills' => ['Team Building', 'Mentoring'],
+        'technical_depth' => ['languages' => ['PHP'], 'frameworks' => ['Laravel']],
+        'experience' => [['role' => 'Dev', 'company' => 'TestCo']],
+        'education' => [['degree' => 'BS CS']],
+        'experience_years' => '9+',
+        'preferences' => ['salary_min' => 120000],
+    ]);
+
+    $profile = $user->getProfileData();
 
     expect($profile)->toHaveKeys([
         'name',
@@ -13,12 +25,15 @@ it('has all required top-level keys', function () {
         'technical_depth',
         'experience_years',
         'preferences',
-        'prompts',
     ]);
 });
 
 it('has em and ic summaries', function () {
-    $summaries = config('profile.summaries');
+    $user = User::factory()->create([
+        'summaries' => ['em' => 'EM summary text', 'ic' => 'IC summary text'],
+    ]);
+
+    $summaries = $user->getProfileData()['summaries'];
 
     expect($summaries)->toHaveKeys(['em', 'ic'])
         ->and($summaries['em'])->toBeString()->not->toBeEmpty()
@@ -26,28 +41,56 @@ it('has em and ic summaries', function () {
 });
 
 it('has leadership skills as a non-empty array', function () {
-    expect(config('profile.leadership_skills'))
+    $user = User::factory()->create([
+        'leadership_skills' => ['Team Building', 'Mentoring'],
+    ]);
+
+    expect($user->getProfileData()['leadership_skills'])
         ->toBeArray()
         ->not->toBeEmpty();
 });
 
-it('has prompts for all agents', function () {
-    $prompts = config('profile.prompts');
+it('returns prompts via getPrompt method', function () {
+    $user = User::factory()->create([
+        'prompts' => [
+            'scorer' => 'Custom scorer prompt',
+            'resume' => 'Custom resume prompt',
+            'cover_letter' => 'Custom cover letter prompt',
+            'application_questions' => 'Custom AQ prompt',
+        ],
+    ]);
 
-    expect($prompts)->toHaveKeys(['scorer', 'resume', 'cover_letter', 'application_questions'])
-        ->and($prompts['scorer'])->toBeString()->not->toBeEmpty()
-        ->and($prompts['resume'])->toBeString()->not->toBeEmpty()
-        ->and($prompts['cover_letter'])->toBeString()->not->toBeEmpty()
-        ->and($prompts['application_questions'])->toBeString()->not->toBeEmpty();
+    expect($user->getPrompt('scorer'))->toBe('Custom scorer prompt')
+        ->and($user->getPrompt('resume'))->toBe('Custom resume prompt')
+        ->and($user->getPrompt('cover_letter'))->toBe('Custom cover letter prompt')
+        ->and($user->getPrompt('application_questions'))->toBe('Custom AQ prompt');
 });
 
-it('has updated experience years and salary minimum', function () {
-    expect(config('profile.experience_years'))->toBe('9+')
-        ->and(config('profile.preferences.salary_min'))->toBe(120000);
+it('has experience years and salary minimum', function () {
+    $user = User::factory()->create([
+        'experience_years' => '9+',
+        'preferences' => ['salary_min' => 120000],
+    ]);
+
+    $profile = $user->getProfileData();
+
+    expect($profile['experience_years'])->toBe('9+')
+        ->and($profile['preferences']['salary_min'])->toBe(120000);
 });
 
 it('has technical depth categories', function () {
-    $depth = config('profile.technical_depth');
+    $user = User::factory()->create([
+        'technical_depth' => [
+            'languages' => ['PHP'],
+            'frameworks' => ['Laravel'],
+            'laravel_ecosystem' => ['Livewire'],
+            'databases' => ['MySQL'],
+            'devops' => ['Docker'],
+            'cloud' => ['AWS'],
+        ],
+    ]);
+
+    $depth = $user->getProfileData()['technical_depth'];
 
     expect($depth)->toHaveKeys([
         'languages',
