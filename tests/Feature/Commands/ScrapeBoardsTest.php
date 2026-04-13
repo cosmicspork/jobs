@@ -3,6 +3,10 @@
 use App\Jobs\ScrapeBoard;
 use Illuminate\Support\Facades\Queue;
 
+beforeEach(function () {
+    login();
+});
+
 it('dispatches a scrape job for each enabled board', function () {
     Queue::fake();
 

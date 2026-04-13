@@ -5,6 +5,8 @@ use App\Jobs\GenerateCoverLetter;
 use App\Jobs\GenerateResume;
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\ListingUser;
+use App\Relevance;
 use Illuminate\Support\Facades\Bus;
 
 it('uses ulids as primary keys', function () {
@@ -36,10 +38,19 @@ it('can be marked as ready', function () {
 it('generates resume only', function () {
     Bus::fake();
 
-    $listing = Listing::factory()->scored()->create();
-    $application = Application::generateResume($listing);
+    $user = login();
+    $listing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+    ]);
+
+    $application = Application::generateResume($listing, $user);
 
     expect($application->listing_id)->toBe($listing->id)
+        ->and($application->user_id)->toBe($user->id)
         ->and($application->status)->toBe(ApplicationStatus::Generating);
 
     Bus::assertBatched(function ($batch) {
@@ -51,8 +62,16 @@ it('generates resume only', function () {
 it('generates cover letter only', function () {
     Bus::fake();
 
-    $listing = Listing::factory()->scored()->create();
-    $application = Application::generateCoverLetter($listing);
+    $user = login();
+    $listing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+    ]);
+
+    $application = Application::generateCoverLetter($listing, $user);
 
     expect($application->listing_id)->toBe($listing->id);
 
@@ -65,8 +84,16 @@ it('generates cover letter only', function () {
 it('generates both resume and cover letter', function () {
     Bus::fake();
 
-    $listing = Listing::factory()->scored()->create();
-    Application::generateBoth($listing);
+    $user = login();
+    $listing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+    ]);
+
+    Application::generateBoth($listing, $user);
 
     Bus::assertBatched(function ($batch) {
         return $batch->jobs->count() === 2
@@ -75,12 +102,20 @@ it('generates both resume and cover letter', function () {
     });
 });
 
-it('reuses existing application for same listing', function () {
+it('reuses existing application for same listing and user', function () {
     Bus::fake();
 
-    $listing = Listing::factory()->scored()->create();
-    $first = Application::generateResume($listing);
-    $second = Application::generateCoverLetter($listing);
+    $user = login();
+    $listing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+    ]);
+
+    $first = Application::generateResume($listing, $user);
+    $second = Application::generateCoverLetter($listing, $user);
 
     expect($first->id)->toBe($second->id)
         ->and(Application::count())->toBe(1);

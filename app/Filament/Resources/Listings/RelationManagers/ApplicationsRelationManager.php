@@ -14,6 +14,7 @@ class ApplicationsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->where('user_id', auth()->id()))
             ->recordTitleAttribute('id')
             ->columns([
                 TextColumn::make('status')

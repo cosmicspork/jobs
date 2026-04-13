@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,6 +21,7 @@ class ApplicationFactory extends Factory
     {
         return [
             'listing_id' => Listing::factory(),
+            'user_id' => User::factory(),
             'status' => 'generating',
         ];
     }

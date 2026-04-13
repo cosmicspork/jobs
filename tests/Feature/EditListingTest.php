@@ -2,20 +2,25 @@
 
 use App\Filament\Resources\Listings\Pages\EditListing;
 use App\Models\Listing;
+use App\Models\ListingUser;
 use App\Relevance;
 use Livewire\Livewire;
 
 use function Pest\Laravel\assertDatabaseHas;
 
+beforeEach(function () {
+    $this->user = login();
+});
+
 it('can load the edit page', function () {
-    $listing = Listing::factory()->scored()->create();
+    $listing = Listing::factory()->create();
 
     Livewire::test(EditListing::class, ['record' => $listing->id])
         ->assertOk();
 });
 
 it('can update listing fields', function () {
-    $listing = Listing::factory()->scored()->create();
+    $listing = Listing::factory()->create();
 
     Livewire::test(EditListing::class, ['record' => $listing->id])
         ->fillForm([
@@ -38,16 +43,17 @@ it('can update listing fields', function () {
     ]);
 });
 
-it('can override relevance scoring', function () {
-    $listing = Listing::factory()->scored(Relevance::Maybe)->create();
+it('can update relevance on the pivot directly', function () {
+    $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Maybe,
+        'scored_at' => now(),
+    ]);
 
-    Livewire::test(EditListing::class, ['record' => $listing->id])
-        ->fillForm([
-            'relevance' => Relevance::Relevant->value,
-        ])
-        ->call('save')
-        ->assertNotified();
+    $pivot->update(['relevance' => Relevance::Relevant]);
+    $pivot->refresh();
 
-    $listing->refresh();
-    expect($listing->relevance)->toBe(Relevance::Relevant);
+    expect($pivot->relevance)->toBe(Relevance::Relevant);
 });

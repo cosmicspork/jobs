@@ -5,6 +5,10 @@ use App\Filament\Widgets\AiUsageStats;
 use App\Models\AiUsage;
 use Livewire\Livewire;
 
+beforeEach(function () {
+    $this->user = login();
+});
+
 it('renders the ai usage page', function () {
     $this->get(route('filament.admin.pages.ai-usage'))
         ->assertSuccessful();
@@ -12,6 +16,7 @@ it('renders the ai usage page', function () {
 
 it('displays usage stats in the widget', function () {
     AiUsage::factory()->create([
+        'user_id' => $this->user->id,
         'model' => 'anthropic/claude-sonnet-4-6',
         'agent' => 'JobScorerAgent',
         'prompt_tokens' => 2000,
@@ -20,6 +25,7 @@ it('displays usage stats in the widget', function () {
     ]);
 
     AiUsage::factory()->create([
+        'user_id' => $this->user->id,
         'model' => 'anthropic/claude-haiku-4-5',
         'agent' => 'JobScorerAgent',
         'prompt_tokens' => 1000,
@@ -36,6 +42,7 @@ it('displays usage stats in the widget', function () {
 
 it('displays per-agent average stats', function () {
     AiUsage::factory()->count(3)->create([
+        'user_id' => $this->user->id,
         'agent' => 'JobScorerAgent',
         'prompt_tokens' => 1000,
         'completion_tokens' => 500,
@@ -43,6 +50,7 @@ it('displays per-agent average stats', function () {
     ]);
 
     AiUsage::factory()->count(2)->create([
+        'user_id' => $this->user->id,
         'agent' => 'ResumeTailorAgent',
         'prompt_tokens' => 2000,
         'completion_tokens' => 1000,

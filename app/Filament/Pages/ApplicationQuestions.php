@@ -54,6 +54,7 @@ class ApplicationQuestions extends Page
         if ($listingId) {
             $questionSet = ApplicationQuestionSet::with('questions')
                 ->where('listing_id', $listingId)
+                ->where('user_id', auth()->id())
                 ->latest()
                 ->first();
 
@@ -125,6 +126,7 @@ class ApplicationQuestions extends Page
             ? ApplicationQuestionSet::findOrFail($this->questionSetId)
             : ApplicationQuestionSet::create([
                 'listing_id' => $listingId,
+                'user_id' => auth()->id(),
                 'status' => ApplicationQuestionSetStatus::Reviewing,
             ]);
 
@@ -145,7 +147,7 @@ class ApplicationQuestions extends Page
         $prompt = $this->buildAgentPrompt($questions, $listingId);
 
         try {
-            $response = (new ApplicationQuestionsAgent)->prompt($prompt);
+            $response = (new ApplicationQuestionsAgent(auth()->user()))->prompt($prompt);
 
             foreach ($response['answers'] as $answer) {
                 $index = $answer['question_index'];

@@ -1,19 +1,25 @@
 <?php
 
 use App\Models\Listing;
+use App\Models\User;
 
 it('renders the cover letter template with letterhead', function () {
+    $user = login(User::factory()->create([
+        'name' => 'Test User',
+        'email' => 'josh@example.com',
+    ]));
+
     $listing = Listing::factory()->create(['company' => 'Acme Corp']);
 
     $html = view('cover-letter.base', [
-        'profile' => array_merge(config('profile'), ['email' => 'josh@example.com']),
+        'profile' => array_merge($user->getProfileData(), ['email' => 'josh@example.com']),
         'subjectLine' => 'Engineering Manager',
         'body' => "First paragraph.\n\nSecond paragraph.",
         'listing' => $listing,
     ])->render();
 
     expect($html)
-        ->toContain(config('profile.name'))
+        ->toContain('Test User')
         ->toContain('josh@example.com')
         ->toContain('Acme Corp')
         ->toContain('Position: Engineering Manager')
@@ -24,10 +30,15 @@ it('renders the cover letter template with letterhead', function () {
 });
 
 it('renders without email when not set', function () {
+    $user = login(User::factory()->create([
+        'name' => 'Test User',
+        'email' => 'josh@example.com',
+    ]));
+
     $listing = Listing::factory()->create(['company' => 'Test Co']);
 
     $html = view('cover-letter.base', [
-        'profile' => array_merge(config('profile'), ['email' => '']),
+        'profile' => array_merge($user->getProfileData(), ['email' => '']),
         'subjectLine' => 'Developer Role',
         'body' => 'Body text here.',
         'listing' => $listing,

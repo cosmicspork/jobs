@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\AiUsageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AiUsage extends Model
 {
@@ -29,6 +30,7 @@ class AiUsage extends Model
     ];
 
     protected $fillable = [
+        'user_id',
         'agent',
         'provider',
         'model',
@@ -39,6 +41,14 @@ class AiUsage extends Model
         'reasoning_tokens',
         'cost',
     ];
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function totalTokens(): int
     {

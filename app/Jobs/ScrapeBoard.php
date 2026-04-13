@@ -7,6 +7,7 @@ use App\Services\Scrapers\ScraperInterface;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ScrapeBoard implements ShouldQueue
@@ -43,6 +44,11 @@ class ScrapeBoard implements ShouldQueue
             );
 
             if ($listing->wasRecentlyCreated) {
+                $userIds = DB::table('board_user')
+                    ->where('board_key', $this->boardKey)
+                    ->pluck('user_id');
+
+                $listing->users()->attach($userIds);
                 $created++;
             }
 

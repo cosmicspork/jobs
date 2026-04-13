@@ -12,10 +12,14 @@ class LogAiUsage
     {
         $usage = $event->response->usage;
         $meta = $event->response->meta;
-        $agent = class_basename($event->prompt->agent);
+        $agent = $event->prompt->agent;
+        $agentName = class_basename($agent);
+
+        $userId = property_exists($agent, 'user') ? $agent->user?->id : null;
 
         AiUsage::create([
-            'agent' => $agent,
+            'user_id' => $userId,
+            'agent' => $agentName,
             'provider' => $meta->provider,
             'model' => $meta->model,
             'prompt_tokens' => $usage->promptTokens,

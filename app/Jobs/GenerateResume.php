@@ -21,9 +21,10 @@ class GenerateResume implements ShouldQueue
     public function handle(): void
     {
         $listing = $this->application->listing;
-        $profile = config('profile');
+        $user = $this->application->user;
+        $profile = $user->getProfileData();
 
-        $response = (new ResumeTailorAgent)->prompt(
+        $response = (new ResumeTailorAgent($user))->prompt(
             "Tailor my resume for this job posting (listing_id: {$listing->id})."
         );
 

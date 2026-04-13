@@ -5,65 +5,89 @@ use App\Mail\DailyDigest;
 use App\Models\AiUsage;
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\ListingUser;
+use App\Models\User;
 use App\Relevance;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     Mail::fake();
-    config(['profile.email' => 'test@example.com']);
+
+    // Disable digest for any seeded users so only our test user triggers sends
+    User::query()->update(['digest_enabled' => false]);
+
+    $this->user = User::factory()->create([
+        'digest_enabled' => true,
+    ]);
+    $this->actingAs($this->user);
 });
 
 it('sends the digest email', function () {
-    Listing::factory()->scored(Relevance::Relevant)->create();
+    $listing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+    ]);
 
     $this->artisan('digest:send')
         ->assertSuccessful()
-        ->expectsOutputToContain('Daily digest sent to test@example.com');
+        ->expectsOutputToContain('Daily digest sent to 1 user(s).');
 
     Mail::assertSent(DailyDigest::class, function ($mail) {
-        return $mail->hasTo('test@example.com');
+        return $mail->hasTo($this->user->email);
     });
 });
 
 it('includes only listings scored in the last 24 hours', function () {
-    $recent = Listing::factory()->scored(Relevance::Relevant)->create([
-        'title' => 'Recent Job',
+    $recentListing = Listing::factory()->create(['title' => 'Recent Job']);
+    ListingUser::create([
+        'listing_id' => $recentListing->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Relevant,
         'scored_at' => now()->subHours(2),
     ]);
 
-    Listing::factory()->scored(Relevance::Relevant)->create([
-        'title' => 'Old Job',
+    $oldListing = Listing::factory()->create(['title' => 'Old Job']);
+    ListingUser::create([
+        'listing_id' => $oldListing->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Relevant,
         'scored_at' => now()->subHours(48),
     ]);
 
     $this->artisan('digest:send')->assertSuccessful();
 
-    Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) use ($recent) {
+    Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) use ($recentListing) {
         return $mail->relevantListings->count() === 1
-            && $mail->relevantListings->first()->id === $recent->id;
+            && $mail->relevantListings->first()->id === $recentListing->id;
     });
 });
 
-it('fails when no profile email is configured', function () {
-    config(['profile.email' => null]);
+it('does not send when no users have digest enabled', function () {
+    $this->user->update(['digest_enabled' => false]);
 
     $this->artisan('digest:send')
-        ->assertFailed()
-        ->expectsOutputToContain('No profile email configured');
+        ->assertSuccessful()
+        ->expectsOutputToContain('No users with digest enabled.');
 
     Mail::assertNothingSent();
 });
 
 it('includes ready and failed application updates', function () {
     $readyApp = Application::factory()->ready()->create([
+        'user_id' => $this->user->id,
         'updated_at' => now()->subHours(1),
     ]);
 
     $failedApp = Application::factory()->state(['status' => ApplicationStatus::Failed])->create([
+        'user_id' => $this->user->id,
         'updated_at' => now()->subHours(1),
     ]);
 
     Application::factory()->ready()->create([
+        'user_id' => $this->user->id,
         'updated_at' => now()->subHours(48),
     ]);
 
@@ -78,10 +102,24 @@ it('includes ready and failed application updates', function () {
 });
 
 it('includes shortlisted listings without applications', function () {
-    $shortlisted = Listing::factory()->scored()->shortlisted()->create();
+    $shortlisted = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $shortlisted->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+        'shortlisted_at' => now(),
+    ]);
 
-    $withApp = Listing::factory()->scored()->shortlisted()->create();
-    Application::factory()->for($withApp)->create();
+    $withApp = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $withApp->id,
+        'user_id' => $this->user->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+        'shortlisted_at' => now(),
+    ]);
+    Application::factory()->for($withApp)->create(['user_id' => $this->user->id]);
 
     $this->artisan('digest:send')->assertSuccessful();
 
@@ -93,11 +131,13 @@ it('includes shortlisted listings without applications', function () {
 
 it('calculates ai usage stats', function () {
     AiUsage::factory()->count(3)->create([
+        'user_id' => $this->user->id,
         'model' => 'anthropic/claude-haiku-4-5',
         'cost' => 0.50,
     ]);
 
     AiUsage::factory()->create([
+        'user_id' => $this->user->id,
         'model' => 'anthropic/claude-haiku-4-5',
         'cost' => 0.25,
         'created_at' => now()->subDays(2),

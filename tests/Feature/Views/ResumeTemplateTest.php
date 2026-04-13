@@ -1,12 +1,36 @@
 <?php
 
 use App\Models\Listing;
+use App\Models\User;
+
+beforeEach(function () {
+    $this->user = login(User::factory()->create([
+        'name' => 'Test User',
+        'title' => 'Engineering Manager',
+        'summaries' => ['em' => 'EM summary', 'ic' => 'IC summary'],
+        'leadership_skills' => ['Team Building'],
+        'technical_depth' => ['languages' => ['PHP']],
+        'experience' => [
+            [
+                'role' => 'Software Developer',
+                'company' => 'Acme Industries',
+                'period' => 'June 2022 - Present',
+                'highlights' => ['Led AI tooling task force for a 50-person org.'],
+            ],
+        ],
+        'education' => [
+            'M.S. in IT Innovation — Example University, 2023',
+        ],
+        'experience_years' => '9+',
+        'preferences' => ['salary_min' => 120000],
+    ]));
+});
 
 it('renders the resume template with structured experience', function () {
     $listing = Listing::factory()->create();
 
     $html = view('resume.base', [
-        'profile' => config('profile'),
+        'profile' => $this->user->getProfileData(),
         'summary' => 'A tailored professional summary for testing.',
         'skills' => ['PHP', 'Laravel', 'People Management'],
         'experience' => [
@@ -32,8 +56,7 @@ it('renders the resume template with structured experience', function () {
     ])->render();
 
     expect($html)
-        ->toContain(config('profile.name'))
-        ->toContain(config('profile.title'))
+        ->toContain('Test User')
         ->toContain('A tailored professional summary for testing.')
         ->toContain('PHP')
         ->toContain('Software Developer')
@@ -49,7 +72,7 @@ it('includes education from profile', function () {
     $listing = Listing::factory()->create();
 
     $html = view('resume.base', [
-        'profile' => config('profile'),
+        'profile' => $this->user->getProfileData(),
         'summary' => 'Test summary.',
         'skills' => ['PHP'],
         'experience' => [

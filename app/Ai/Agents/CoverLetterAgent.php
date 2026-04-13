@@ -4,6 +4,7 @@ namespace App\Ai\Agents;
 
 use App\Ai\Tools\GetJobPosting;
 use App\Ai\Tools\GetProfile;
+use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Model;
@@ -22,9 +23,11 @@ class CoverLetterAgent implements Agent, HasStructuredOutput, HasTools
 {
     use Promptable;
 
+    public function __construct(public User $user) {}
+
     public function instructions(): Stringable|string
     {
-        return config('profile.prompts.cover_letter');
+        return $this->user->getPrompt('cover_letter');
     }
 
     /**
@@ -33,7 +36,7 @@ class CoverLetterAgent implements Agent, HasStructuredOutput, HasTools
     public function tools(): iterable
     {
         return [
-            new GetProfile,
+            new GetProfile($this->user),
             new GetJobPosting,
         ];
     }

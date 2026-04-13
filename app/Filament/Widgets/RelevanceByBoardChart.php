@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Listing;
+use App\Models\ListingUser;
 use App\Relevance;
 use Filament\Widgets\ChartWidget;
 
@@ -18,10 +18,12 @@ class RelevanceByBoardChart extends ChartWidget
 
     protected function getData(): array
     {
-        $boards = Listing::query()
-            ->whereNotNull('scored_at')
-            ->selectRaw('board, relevance, COUNT(*) as count')
-            ->groupBy('board', 'relevance')
+        $boards = ListingUser::query()
+            ->where('listing_user.user_id', auth()->id())
+            ->whereNotNull('listing_user.scored_at')
+            ->join('listings', 'listings.id', '=', 'listing_user.listing_id')
+            ->selectRaw('listings.board, listing_user.relevance, COUNT(*) as count')
+            ->groupBy('listings.board', 'listing_user.relevance')
             ->get()
             ->groupBy('board');
 

@@ -3,8 +3,13 @@
 use App\Filament\Widgets\ListingStats;
 use App\Filament\Widgets\RelevanceByBoardChart;
 use App\Models\Listing;
+use App\Models\ListingUser;
 use App\Relevance;
 use Livewire\Livewire;
+
+beforeEach(function () {
+    $this->user = login();
+});
 
 it('renders the dashboard page', function () {
     $this->get(route('filament.admin.pages.dashboard'))
@@ -12,9 +17,33 @@ it('renders the dashboard page', function () {
 });
 
 it('displays listing stats', function () {
-    Listing::factory(3)->scored(Relevance::Relevant)->create(['board' => 'larajobs']);
-    Listing::factory(5)->scored(Relevance::Irrelevant)->create(['board' => 'hn']);
-    Listing::factory(2)->create();
+    $relevantListings = Listing::factory(3)->create(['board' => 'larajobs']);
+    foreach ($relevantListings as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+            'relevance' => Relevance::Relevant,
+            'scored_at' => now(),
+        ]);
+    }
+
+    $irrelevantListings = Listing::factory(5)->create(['board' => 'hn']);
+    foreach ($irrelevantListings as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+            'relevance' => Relevance::Irrelevant,
+            'scored_at' => now(),
+        ]);
+    }
+
+    $unscoredListings = Listing::factory(2)->create();
+    foreach ($unscoredListings as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+        ]);
+    }
 
     Livewire::test(ListingStats::class)
         ->assertSee('Total Listings')
@@ -26,8 +55,25 @@ it('displays listing stats', function () {
 });
 
 it('shows relevance breakdown by board', function () {
-    Listing::factory(3)->scored(Relevance::Relevant)->create(['board' => 'larajobs']);
-    Listing::factory(2)->scored(Relevance::Irrelevant)->create(['board' => 'hn']);
+    $relevantListings = Listing::factory(3)->create(['board' => 'larajobs']);
+    foreach ($relevantListings as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+            'relevance' => Relevance::Relevant,
+            'scored_at' => now(),
+        ]);
+    }
+
+    $irrelevantListings = Listing::factory(2)->create(['board' => 'hn']);
+    foreach ($irrelevantListings as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+            'relevance' => Relevance::Irrelevant,
+            'scored_at' => now(),
+        ]);
+    }
 
     Livewire::test(RelevanceByBoardChart::class)
         ->assertSuccessful();

@@ -22,6 +22,7 @@ class AiCostChart extends ChartWidget
         $days = collect(range(29, 0))->map(fn (int $i) => $now->copy()->subDays($i)->format('Y-m-d'));
 
         $costs = AiUsage::query()
+            ->where('user_id', auth()->id())
             ->where('created_at', '>=', $now->copy()->subDays(30)->startOfDay())
             ->selectRaw('DATE(created_at) as date, model, SUM(cost) as total_cost')
             ->groupBy('date', 'model')
