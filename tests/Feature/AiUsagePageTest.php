@@ -3,10 +3,11 @@
 use App\Filament\Widgets\AiPerAgentStats;
 use App\Filament\Widgets\AiUsageStats;
 use App\Models\AiUsage;
+use App\Models\User;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->user = login();
+    $this->user = login(User::factory()->create(['is_admin' => true]));
 });
 
 it('renders the ai usage page', function () {
