@@ -6,7 +6,6 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -48,19 +47,14 @@ class Profile extends Page
             'email' => $user->email,
             'title' => $user->title,
             'experience_years' => $user->experience_years,
-            'summary_em' => $user->summaries['em'] ?? '',
-            'summary_ic' => $user->summaries['ic'] ?? '',
-            'leadership_skills' => $user->leadership_skills ?? [],
-            'technical_depth' => $user->technical_depth ?? [],
+            'role_type' => $user->preferences['role_type'] ?? 'both',
+            'summary' => $user->summary,
+            'skills' => $user->skills ?? [],
             'experience' => $user->experience ?? [],
             'education' => $user->education ?? [],
             'remote' => $user->preferences['remote'] ?? true,
             'salary_min' => $user->preferences['salary_min'] ?? null,
             'locations' => $user->preferences['locations'] ?? [],
-            'prompt_scorer' => $user->prompts['scorer'] ?? '',
-            'prompt_resume' => $user->prompts['resume'] ?? '',
-            'prompt_cover_letter' => $user->prompts['cover_letter'] ?? '',
-            'prompt_application_questions' => $user->prompts['application_questions'] ?? '',
             'boards' => $user->subscribedBoardKeys(),
             'digest_enabled' => $user->digest_enabled,
             'digest_time' => $user->digest_time,
@@ -73,106 +67,102 @@ class Profile extends Page
         return $schema
             ->components([
                 Form::make([
-                    Section::make('Basic Info')
-                        ->columns(3)
+                    Section::make('About you')
+                        ->description('Used for scoring job listings and tailoring resumes.')
+                        ->columns(6)
                         ->schema([
-                            TextInput::make('name')->required(),
-                            TextInput::make('email')->email()->required(),
-                            TextInput::make('title')->placeholder('e.g. Software Developer'),
-                            TextInput::make('experience_years')->placeholder('e.g. 9+'),
-                        ]),
-                    Section::make('Summaries')
-                        ->description('Pre-written career summaries used for resume tailoring.')
-                        ->schema([
-                            Textarea::make('summary_em')
-                                ->label('Engineering Management Summary')
-                                ->rows(3),
-                            Textarea::make('summary_ic')
-                                ->label('Individual Contributor Summary')
-                                ->rows(3),
+                            TextInput::make('name')
+                                ->required()
+                                ->columnSpan(3),
+                            TextInput::make('email')
+                                ->email()
+                                ->required()
+                                ->columnSpan(3),
+                            TextInput::make('title')
+                                ->placeholder('e.g. Senior Software Engineer')
+                                ->required()
+                                ->columnSpan(3),
+                            TextInput::make('experience_years')
+                                ->label('Years of experience')
+                                ->placeholder('e.g. 9+')
+                                ->columnSpan(1),
+                            Select::make('role_type')
+                                ->label('Looking for')
+                                ->options([
+                                    'em' => 'Management roles',
+                                    'ic' => 'Individual contributor roles',
+                                    'both' => 'Both — open to either',
+                                ])
+                                ->default('both')
+                                ->required()
+                                ->columnSpan(2),
+                            Textarea::make('summary')
+                                ->label('Professional summary')
+                                ->helperText("2-3 sentences on who you are and what you're looking for. Used by the resume and cover letter agents.")
+                                ->rows(4)
+                                ->required()
+                                ->columnSpanFull(),
                         ]),
                     Section::make('Skills')
+                        ->description('Technical and leadership skills — one flat list. The scoring agent uses this to match you to listings.')
                         ->schema([
-                            TagsInput::make('leadership_skills')
-                                ->label('Leadership Skills')
-                                ->placeholder('Add a skill'),
-                            KeyValue::make('technical_depth')
-                                ->label('Technical Depth')
-                                ->keyLabel('Category')
-                                ->valueLabel('Skills (comma-separated)')
-                                ->addActionLabel('Add Category'),
+                            TagsInput::make('skills')
+                                ->placeholder('Add a skill — Laravel, Kubernetes, Mentorship, etc.')
+                                ->required(),
                         ]),
-                    Section::make('Experience')
+                    Section::make('Experience & education')
+                        ->description('Optional. Resume tailoring works better with structured experience, but you can skip for now.')
+                        ->collapsible()
+                        ->collapsed(fn (): bool => empty(auth()->user()->experience) && empty(auth()->user()->education))
                         ->schema([
                             Repeater::make('experience')
+                                ->label('Work history')
                                 ->schema([
                                     TextInput::make('role')->required(),
                                     TextInput::make('company')->required(),
                                     TextInput::make('period')->required()->placeholder('June 2022 - Present'),
-                                    TagsInput::make('highlights')
-                                        ->placeholder('Add a highlight'),
+                                    TagsInput::make('highlights')->placeholder('Add a highlight'),
                                 ])
-                                ->addActionLabel('Add Role')
+                                ->addActionLabel('Add role')
                                 ->collapsible()
                                 ->itemLabel(fn (array $state): ?string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
-                        ]),
-                    Section::make('Education')
-                        ->schema([
                             TagsInput::make('education')
-                                ->placeholder('Add a degree'),
+                                ->placeholder('e.g. B.S. Computer Science, University X'),
                         ]),
-                    Section::make('Preferences')
+                    Section::make('Job preferences')
                         ->columns(3)
                         ->schema([
-                            Toggle::make('remote')->label('Remote Only'),
+                            Toggle::make('remote')->label('Remote only'),
                             TextInput::make('salary_min')
-                                ->label('Minimum Salary')
+                                ->label('Minimum salary')
                                 ->numeric()
                                 ->prefix('$'),
                             TagsInput::make('locations')
                                 ->placeholder('Add location'),
                         ]),
-                    Section::make('Board Subscriptions')
-                        ->description('Select which job boards to receive listings from.')
+                    Section::make('Notifications')
+                        ->description('Pick which boards to pull from and whether to get a daily digest email.')
+                        ->collapsible()
+                        ->collapsed()
+                        ->columns(6)
                         ->schema([
                             CheckboxList::make('boards')
-                                ->label('')
-                                ->options(fn (): array => User::boardOptions()),
-                        ]),
-                    Section::make('Daily Digest')
-                        ->columns(3)
-                        ->schema([
-                            Toggle::make('digest_enabled')->label('Enable Daily Digest'),
+                                ->label('Job boards')
+                                ->options(fn (): array => User::boardOptions())
+                                ->columnSpanFull(),
+                            Toggle::make('digest_enabled')
+                                ->label('Daily digest email')
+                                ->columnSpan(2),
                             TextInput::make('digest_time')
-                                ->label('Send Time (HH:MM)')
-                                ->placeholder('08:00'),
+                                ->label('Send time (HH:MM)')
+                                ->placeholder('08:00')
+                                ->columnSpan(2),
                             Select::make('timezone')
                                 ->label('Timezone')
                                 ->options(fn (): array => User::timezoneOptions())
                                 ->searchable()
-                                ->required(),
-                        ]),
-                    Section::make('AI Prompts')
-                        ->description('Customize the prompts used by AI agents. Leave blank to use defaults.')
-                        ->collapsible()
-                        ->collapsed()
-                        ->schema([
-                            Textarea::make('prompt_scorer')
-                                ->label('Job Scoring Prompt')
-                                ->rows(10)
-                                ->placeholder('Leave blank for default'),
-                            Textarea::make('prompt_resume')
-                                ->label('Resume Tailor Prompt')
-                                ->rows(10)
-                                ->placeholder('Leave blank for default'),
-                            Textarea::make('prompt_cover_letter')
-                                ->label('Cover Letter Prompt')
-                                ->rows(10)
-                                ->placeholder('Leave blank for default'),
-                            Textarea::make('prompt_application_questions')
-                                ->label('Application Questions Prompt')
-                                ->rows(10)
-                                ->placeholder('Leave blank for default'),
+                                ->required()
+                                ->columnSpan(2),
                         ]),
                 ])
                     ->livewireSubmitHandler('save')
@@ -198,25 +188,16 @@ class Profile extends Page
             'email' => $data['email'],
             'title' => $data['title'],
             'experience_years' => $data['experience_years'],
-            'summaries' => [
-                'em' => $data['summary_em'] ?? '',
-                'ic' => $data['summary_ic'] ?? '',
-            ],
-            'leadership_skills' => $data['leadership_skills'] ?? [],
-            'technical_depth' => $data['technical_depth'] ?? [],
+            'summary' => $data['summary'] ?? null,
+            'skills' => $data['skills'] ?? [],
             'experience' => $data['experience'] ?? [],
             'education' => $data['education'] ?? [],
             'preferences' => [
                 'remote' => $data['remote'] ?? true,
                 'salary_min' => $data['salary_min'] ? (int) $data['salary_min'] : null,
                 'locations' => $data['locations'] ?? [],
+                'role_type' => $data['role_type'] ?? 'both',
             ],
-            'prompts' => array_filter([
-                'scorer' => $data['prompt_scorer'] ?? null,
-                'resume' => $data['prompt_resume'] ?? null,
-                'cover_letter' => $data['prompt_cover_letter'] ?? null,
-                'application_questions' => $data['prompt_application_questions'] ?? null,
-            ]),
             'digest_enabled' => $data['digest_enabled'] ?? true,
             'digest_time' => $data['digest_time'] ?? '08:00',
             'timezone' => $data['timezone'] ?? 'America/Chicago',

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Listings\Pages;
 use App\Filament\Pages\ApplicationQuestions;
 use App\Filament\Resources\Listings\Concerns\HasListingActions;
 use App\Filament\Resources\Listings\ListingResource;
+use App\Models\Application;
 use App\Models\Listing;
 use App\Models\ListingUser;
 use Filament\Actions\Action;
@@ -49,6 +50,10 @@ class ViewListing extends ViewRecord
             Action::make('applicationQuestions')
                 ->label('Application Questions')
                 ->icon('heroicon-o-chat-bubble-left-right')
+                ->visible(fn (): bool => Application::query()
+                    ->where('user_id', auth()->id())
+                    ->where('listing_id', $this->record->getKey())
+                    ->exists())
                 ->url(function (): string {
                     /** @var Listing $listing */
                     $listing = $this->record;

@@ -51,21 +51,16 @@ class UserFactory extends Factory
         return $this->state([
             'title' => 'Engineering Manager',
             'experience_years' => '12+',
-            'summaries' => [
-                'em' => 'Engineering manager with 12+ years building and leading teams across backend and platform engineering. Experienced hiring, coaching, and shipping large cross-functional initiatives.',
-                'ic' => 'Senior backend engineer with deep experience in distributed systems, API design, and developer tooling.',
-            ],
-            'leadership_skills' => [
+            'summary' => 'Engineering manager with 12+ years building and leading teams across backend and platform engineering. Experienced hiring, coaching, and shipping large cross-functional initiatives.',
+            'skills' => [
                 'Hiring & Coaching',
                 'Org Design',
                 'Cross-functional Leadership',
                 'Technical Strategy',
                 'Mentorship',
-            ],
-            'technical_depth' => [
-                'Languages' => 'Go, PHP, Python, TypeScript',
-                'Infrastructure' => 'AWS, Kubernetes, Terraform',
-                'Databases' => 'PostgreSQL, Redis, DynamoDB',
+                'Go', 'PHP', 'Python', 'TypeScript',
+                'AWS', 'Kubernetes', 'Terraform',
+                'PostgreSQL', 'Redis', 'DynamoDB',
             ],
             'experience' => [
                 [
@@ -93,6 +88,7 @@ class UserFactory extends Factory
                 'remote' => true,
                 'salary_min' => 220000,
                 'locations' => ['Remote', 'Austin, TX'],
+                'role_type' => 'em',
             ],
         ]);
     }
@@ -105,19 +101,12 @@ class UserFactory extends Factory
         return $this->state([
             'title' => 'Senior Software Engineer',
             'experience_years' => '8+',
-            'summaries' => [
-                'em' => 'Tech lead experienced guiding small teams through ambiguous problems, though prefers hands-on IC work.',
-                'ic' => 'Senior software engineer with 8+ years of experience in full-stack web development, focused on Laravel, TypeScript, and developer productivity.',
-            ],
-            'leadership_skills' => [
-                'Tech Lead',
-                'Code Review',
-                'Mentorship',
-            ],
-            'technical_depth' => [
-                'Languages' => 'PHP, TypeScript, Go, SQL',
-                'Frameworks' => 'Laravel, React, Livewire, Next.js',
-                'Tooling' => 'Docker, GitHub Actions, Playwright',
+            'summary' => 'Senior software engineer with 8+ years of experience in full-stack web development, focused on Laravel, TypeScript, and developer productivity.',
+            'skills' => [
+                'PHP', 'TypeScript', 'Go', 'SQL',
+                'Laravel', 'React', 'Livewire', 'Next.js',
+                'Docker', 'GitHub Actions', 'Playwright',
+                'Tech Lead', 'Code Review', 'Mentorship',
             ],
             'experience' => [
                 [
@@ -144,6 +133,7 @@ class UserFactory extends Factory
                 'remote' => true,
                 'salary_min' => 175000,
                 'locations' => ['Remote'],
+                'role_type' => 'ic',
             ],
         ]);
     }

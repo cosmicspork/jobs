@@ -8,7 +8,6 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -123,10 +122,9 @@ class AdminUsers extends Page implements HasTable
                 'is_admin' => $record->is_admin,
                 'title' => $record->title,
                 'experience_years' => $record->experience_years,
-                'summary_em' => $record->summaries['em'] ?? '',
-                'summary_ic' => $record->summaries['ic'] ?? '',
-                'leadership_skills' => $record->leadership_skills ?? [],
-                'technical_depth' => $record->technical_depth ?? [],
+                'role_type' => $record->preferences['role_type'] ?? 'both',
+                'summary' => $record->summary,
+                'skills' => $record->skills ?? [],
                 'experience' => $record->experience ?? [],
                 'education' => $record->education ?? [],
                 'remote' => $record->preferences['remote'] ?? true,
@@ -145,25 +143,25 @@ class AdminUsers extends Page implements HasTable
                         TextInput::make('email')->email()->required(),
                         Toggle::make('is_admin')->label('Admin'),
                     ]),
-                Section::make('Basic Info')
-                    ->columns(2)
+                Section::make('About')
+                    ->columns(6)
                     ->schema([
-                        TextInput::make('title'),
-                        TextInput::make('experience_years'),
-                    ]),
-                Section::make('Summaries')
-                    ->schema([
-                        Textarea::make('summary_em')->label('Engineering Management Summary')->rows(3),
-                        Textarea::make('summary_ic')->label('Individual Contributor Summary')->rows(3),
+                        TextInput::make('title')->columnSpan(3),
+                        TextInput::make('experience_years')->columnSpan(1),
+                        Select::make('role_type')
+                            ->options([
+                                'em' => 'Management',
+                                'ic' => 'IC',
+                                'both' => 'Both',
+                            ])
+                            ->columnSpan(2),
+                        Textarea::make('summary')->rows(3)->columnSpanFull(),
                     ]),
                 Section::make('Skills')
                     ->schema([
-                        TagsInput::make('leadership_skills'),
-                        KeyValue::make('technical_depth')
-                            ->keyLabel('Category')
-                            ->valueLabel('Skills'),
+                        TagsInput::make('skills'),
                     ]),
-                Section::make('Experience')
+                Section::make('Experience & education')
                     ->schema([
                         Repeater::make('experience')
                             ->schema([
@@ -174,9 +172,6 @@ class AdminUsers extends Page implements HasTable
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
-                    ]),
-                Section::make('Education')
-                    ->schema([
                         TagsInput::make('education'),
                     ]),
                 Section::make('Preferences')
@@ -186,20 +181,18 @@ class AdminUsers extends Page implements HasTable
                         TextInput::make('salary_min')->numeric()->prefix('$'),
                         TagsInput::make('locations'),
                     ]),
-                Section::make('Board Subscriptions')
+                Section::make('Notifications')
+                    ->columns(6)
                     ->schema([
                         CheckboxList::make('boards')
-                            ->label('')
-                            ->options(fn (): array => User::boardOptions()),
-                    ]),
-                Section::make('Daily Digest')
-                    ->columns(3)
-                    ->schema([
-                        Toggle::make('digest_enabled'),
-                        TextInput::make('digest_time')->placeholder('08:00'),
+                            ->options(fn (): array => User::boardOptions())
+                            ->columnSpanFull(),
+                        Toggle::make('digest_enabled')->columnSpan(2),
+                        TextInput::make('digest_time')->placeholder('08:00')->columnSpan(2),
                         Select::make('timezone')
                             ->options(fn (): array => User::timezoneOptions())
-                            ->searchable(),
+                            ->searchable()
+                            ->columnSpan(2),
                     ]),
             ])
             ->action(function (array $data, User $record): void {
@@ -209,18 +202,15 @@ class AdminUsers extends Page implements HasTable
                     'is_admin' => $data['is_admin'] ?? false,
                     'title' => $data['title'] ?? null,
                     'experience_years' => $data['experience_years'] ?? null,
-                    'summaries' => [
-                        'em' => $data['summary_em'] ?? '',
-                        'ic' => $data['summary_ic'] ?? '',
-                    ],
-                    'leadership_skills' => $data['leadership_skills'] ?? [],
-                    'technical_depth' => $data['technical_depth'] ?? [],
+                    'summary' => $data['summary'] ?? null,
+                    'skills' => $data['skills'] ?? [],
                     'experience' => $data['experience'] ?? [],
                     'education' => $data['education'] ?? [],
                     'preferences' => [
                         'remote' => $data['remote'] ?? true,
                         'salary_min' => $data['salary_min'] ? (int) $data['salary_min'] : null,
                         'locations' => $data['locations'] ?? [],
+                        'role_type' => $data['role_type'] ?? 'both',
                     ],
                     'digest_enabled' => $data['digest_enabled'] ?? true,
                     'digest_time' => $data['digest_time'] ?? '08:00',

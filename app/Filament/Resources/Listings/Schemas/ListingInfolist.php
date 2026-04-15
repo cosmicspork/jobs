@@ -43,9 +43,17 @@ class ListingInfolist
                             ->formatStateUsing(fn (?string $state): string => nl2br(e($state ?? '')))
                             ->placeholder('No description'),
                     ]),
-                Section::make('Relevance')
-                    ->columns(2)
+                Section::make('Why this score')
+                    ->description(fn (Listing $record): ?string => static::getPivot($record)?->scored_at
+                        ? 'How the scoring agent classified this listing against your profile.'
+                        : "This listing hasn't been scored yet.")
+                    ->columns(3)
                     ->schema([
+                        TextEntry::make('pivot_reasoning')
+                            ->label('Reasoning')
+                            ->columnSpanFull()
+                            ->placeholder('No reasoning recorded')
+                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['reasoning'] ?? null),
                         TextEntry::make('pivot_relevance')
                             ->label('Relevance')
                             ->badge()
@@ -60,12 +68,6 @@ class ListingInfolist
                             ->since()
                             ->placeholder('Not scored')
                             ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->scored_at),
-                        TextEntry::make('pivot_quality_signals')
-                            ->label('Quality Signals')
-                            ->badge()
-                            ->color('info')
-                            ->placeholder('None')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['posting_quality_signals'] ?? null),
                         TextEntry::make('pivot_matched_skills')
                             ->label('Matched Skills')
                             ->badge()
@@ -78,11 +80,12 @@ class ListingInfolist
                             ->color('danger')
                             ->placeholder('None')
                             ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['gaps'] ?? null),
-                        TextEntry::make('pivot_reasoning')
-                            ->label('Reasoning')
-                            ->columnSpanFull()
-                            ->placeholder('No reasoning')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['reasoning'] ?? null),
+                        TextEntry::make('pivot_quality_signals')
+                            ->label('Posting Quality Signals')
+                            ->badge()
+                            ->color('info')
+                            ->placeholder('None')
+                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['posting_quality_signals'] ?? null),
                     ]),
                 Section::make('Timestamps')
                     ->columns(3)

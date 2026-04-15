@@ -11,12 +11,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $profile = config('profile');
+        $profile = config('profile', []);
 
-        // Create the first admin user from config/profile.php
+        // Create the first admin user. Historically seeded from config/profile.php;
+        // that config was removed once the app went multi-user, so fresh installs
+        // get an empty admin that can be filled in from the profile form.
         $userId = DB::table('users')->insertGetId([
-            'name' => $profile['name'] ?? 'Admin',
-            'email' => $profile['email'] ?: 'admin@example.com',
+            'name' => $profile['name'] ?? env('PROFILE_NAME', 'Admin'),
+            'email' => $profile['email'] ?? env('PROFILE_EMAIL', 'admin@example.com'),
             'password' => Hash::make(Str::random(32)),
             'title' => null,
             'summaries' => json_encode($profile['summaries'] ?? []),
