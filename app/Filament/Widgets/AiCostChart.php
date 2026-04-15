@@ -16,20 +16,22 @@ class AiCostChart extends ChartWidget
 
     protected ?string $maxHeight = '250px';
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->is_admin ?? false;
+    }
+
     protected function getData(): array
     {
         $now = now();
         $days = collect(range(29, 0))->map(fn (int $i) => $now->copy()->subDays($i)->format('Y-m-d'));
 
         $costs = AiUsage::query()
-            ->where('user_id', auth()->id())
             ->where('created_at', '>=', $now->copy()->subDays(30)->startOfDay())
             ->selectRaw('DATE(created_at) as date, model, SUM(cost) as total_cost')
             ->groupBy('date', 'model')
             ->get()
             ->groupBy('model');
-
-        $datasets = [];
 
         $colors = [
             'anthropic/claude-sonnet-4-6' => 'rgb(251, 191, 36)',
@@ -37,6 +39,8 @@ class AiCostChart extends ChartWidget
             'anthropic/claude-haiku-4-5' => 'rgb(96, 165, 250)',
             'anthropic/claude-4.5-haiku-20251001' => 'rgb(96, 165, 250)',
         ];
+
+        $datasets = [];
 
         foreach ($costs as $model => $records) {
             $byDate = $records->keyBy('date');

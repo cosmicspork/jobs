@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\ListingStats;
+use App\Filament\Widgets\ProfileCompletionChecklist;
 use App\Mail\BoardRequested;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -14,17 +16,17 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Mail;
 
-class RequestBoard extends Page
+class Home extends Page
 {
-    protected string $view = 'filament.pages.request-board';
+    protected string $view = 'filament.pages.home';
 
-    protected static ?string $title = 'Request a Job Board';
+    protected static ?string $title = 'Home';
 
-    protected static ?string $navigationLabel = 'Request a Board';
+    protected static ?string $navigationLabel = 'Home';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlusCircle;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHome;
 
-    protected static ?int $navigationSort = 50;
+    protected static ?int $navigationSort = -1;
 
     /** @var array<string, mixed>|null */
     public ?array $data = [];
@@ -34,12 +36,25 @@ class RequestBoard extends Page
         $this->form->fill();
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            ProfileCompletionChecklist::class,
+            ListingStats::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Tell us about the board')
-                    ->description("We'll review and add it as soon as we can. You'll see new listings show up automatically once it's live.")
+                Section::make('Request a job board')
+                    ->description("Know a job board we should be pulling from? Send it over — we'll review and add it as soon as we can.")
                     ->schema([
                         TextInput::make('name')
                             ->label('Board name')
@@ -51,23 +66,18 @@ class RequestBoard extends Page
                             ->required(),
                         Textarea::make('notes')
                             ->label('Notes (optional)')
-                            ->rows(4)
+                            ->rows(3)
                             ->placeholder('Anything specific — search filters, role types, why this board?'),
-                    ]),
+                    ])
+                    ->footerActions([
+                        Action::make('submit')
+                            ->label('Send Request')
+                            ->submit('submit'),
+                    ])
+                    ->collapsible()
+                    ->collapsed(),
             ])
             ->statePath('data');
-    }
-
-    /**
-     * @return array<Action>
-     */
-    protected function getFormActions(): array
-    {
-        return [
-            Action::make('submit')
-                ->label('Send Request')
-                ->submit('submit'),
-        ];
     }
 
     public function submit(): void

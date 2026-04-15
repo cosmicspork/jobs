@@ -2,21 +2,20 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\AiUsage;
-use App\Models\Listing;
-use App\Models\User;
+use App\Filament\Widgets\AdminOverviewStats;
+use App\Filament\Widgets\ListingVolumeSparklines;
+use App\Filament\Widgets\RelevanceByBoardBars;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
-use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class AdminDashboard extends Page
 {
     protected string $view = 'filament.pages.admin-dashboard';
 
-    protected static ?string $title = 'Admin Dashboard';
+    protected static ?string $title = 'Admin Overview';
 
-    protected static ?string $navigationLabel = 'Admin';
+    protected static ?string $navigationLabel = 'Overview';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
@@ -30,20 +29,19 @@ class AdminDashboard extends Page
     }
 
     /**
-     * @return array<Stat>
+     * @return array<class-string>
      */
-    public function getStats(): array
+    protected function getHeaderWidgets(): array
     {
-        $totalListings = Listing::count();
-        $totalUsers = User::count();
-        $totalAiCost = AiUsage::sum('cost');
-        $todayCost = AiUsage::whereDate('created_at', today())->sum('cost');
-
         return [
-            Stat::make('Total Listings', number_format($totalListings)),
-            Stat::make('Total Users', $totalUsers),
-            Stat::make('Total AI Spend', '$'.number_format($totalAiCost, 2))
-                ->description('Today: $'.number_format($todayCost, 2)),
+            AdminOverviewStats::class,
+            ListingVolumeSparklines::class,
+            RelevanceByBoardBars::class,
         ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
     }
 }
