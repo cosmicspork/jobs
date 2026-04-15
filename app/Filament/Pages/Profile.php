@@ -2,12 +2,13 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -16,9 +17,9 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * @property-read Schema $form
@@ -42,11 +43,6 @@ class Profile extends Page
     {
         $user = auth()->user();
 
-        $boardKeys = DB::table('board_user')
-            ->where('user_id', $user->id)
-            ->pluck('board_key')
-            ->all();
-
         $this->form->fill([
             'name' => $user->name,
             'email' => $user->email,
@@ -65,9 +61,10 @@ class Profile extends Page
             'prompt_resume' => $user->prompts['resume'] ?? '',
             'prompt_cover_letter' => $user->prompts['cover_letter'] ?? '',
             'prompt_application_questions' => $user->prompts['application_questions'] ?? '',
-            'boards' => $boardKeys,
+            'boards' => $user->subscribedBoardKeys(),
             'digest_enabled' => $user->digest_enabled,
             'digest_time' => $user->digest_time,
+            'timezone' => $user->timezone,
         ]);
     }
 
@@ -140,15 +137,20 @@ class Profile extends Page
                         ->schema([
                             CheckboxList::make('boards')
                                 ->label('')
-                                ->options(fn () => collect(config('boards'))->mapWithKeys(fn ($board, $key) => [$key => $board['name']])),
+                                ->options(fn (): array => User::boardOptions()),
                         ]),
                     Section::make('Daily Digest')
-                        ->columns(2)
+                        ->columns(3)
                         ->schema([
                             Toggle::make('digest_enabled')->label('Enable Daily Digest'),
                             TextInput::make('digest_time')
-                                ->label('Send Time')
+                                ->label('Send Time (HH:MM)')
                                 ->placeholder('08:00'),
+                            Select::make('timezone')
+                                ->label('Timezone')
+                                ->options(fn (): array => User::timezoneOptions())
+                                ->searchable()
+                                ->required(),
                         ]),
                     Section::make('AI Prompts')
                         ->description('Customize the prompts used by AI agents. Leave blank to use defaults.')
@@ -217,17 +219,10 @@ class Profile extends Page
             ]),
             'digest_enabled' => $data['digest_enabled'] ?? true,
             'digest_time' => $data['digest_time'] ?? '08:00',
+            'timezone' => $data['timezone'] ?? 'America/Chicago',
         ]);
 
-        // Sync board subscriptions
-        DB::table('board_user')->where('user_id', $user->id)->delete();
-        foreach ($data['boards'] ?? [] as $boardKey) {
-            DB::table('board_user')->insert([
-                'user_id' => $user->id,
-                'board_key' => $boardKey,
-                'created_at' => now(),
-            ]);
-        }
+        $user->syncSubscribedBoards($data['boards'] ?? []);
 
         Notification::make()
             ->title('Profile saved')
