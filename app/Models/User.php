@@ -33,6 +33,7 @@ class User extends Authenticatable implements FilamentUser
         'is_admin',
         'digest_enabled',
         'digest_time',
+        'timezone',
     ];
 
     protected $hidden = [
@@ -121,9 +122,66 @@ class User extends Authenticatable implements FilamentUser
             ->all();
     }
 
+    /**
+     * @param  array<int, string>  $boardKeys
+     */
+    public function syncSubscribedBoards(array $boardKeys): void
+    {
+        DB::transaction(function () use ($boardKeys) {
+            DB::table('board_user')->where('user_id', $this->id)->delete();
+
+            if ($boardKeys === []) {
+                return;
+            }
+
+            $now = now();
+            DB::table('board_user')->insert(array_map(
+                fn (string $key): array => [
+                    'user_id' => $this->id,
+                    'board_key' => $key,
+                    'created_at' => $now,
+                ],
+                $boardKeys,
+            ));
+        });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function boardOptions(): array
+    {
+        return collect(config('boards'))
+            ->mapWithKeys(fn (array $board, string $key): array => [$key => $board['name']])
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function timezoneOptions(): array
+    {
+        static $options = null;
+
+        return $options ??= collect(\DateTimeZone::listIdentifiers())
+            ->mapWithKeys(fn (string $tz): array => [$tz => $tz])
+            ->all();
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return true;
+    }
+
+    /**
+     * Whether the user has filled out enough of their profile for scoring to produce useful results.
+     */
+    public function hasMinimumProfile(): bool
+    {
+        return ! empty($this->title)
+            && ! empty($this->technical_depth)
+            && isset($this->preferences['remote'])
+            && (! empty($this->summaries['em']) || ! empty($this->summaries['ic']));
     }
 
     /**
