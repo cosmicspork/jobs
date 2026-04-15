@@ -7,6 +7,8 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Auth\Notifications\ResetPassword as FilamentResetPasswordNotification;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -23,6 +25,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
@@ -97,7 +100,7 @@ class AdminUsers extends Page implements HasTable
                         'is_admin' => $data['is_admin'] ?? false,
                     ]);
 
-                    Password::broker()->sendResetLink(['email' => $user->email]);
+                    $this->sendFilamentPasswordResetLink($user);
                     Mail::to($user->email)->send(new WelcomeUser($user));
 
                     Notification::make()
@@ -230,7 +233,7 @@ class AdminUsers extends Page implements HasTable
             ->icon(Heroicon::OutlinedKey)
             ->requiresConfirmation()
             ->action(function (User $record): void {
-                Password::broker()->sendResetLink(['email' => $record->email]);
+                $this->sendFilamentPasswordResetLink($record);
 
                 Notification::make()
                     ->title('Password reset sent')
@@ -238,5 +241,18 @@ class AdminUsers extends Page implements HasTable
                     ->success()
                     ->send();
             });
+    }
+
+    protected function sendFilamentPasswordResetLink(User $user): void
+    {
+        Password::broker(Filament::getAuthPasswordBroker())->sendResetLink(
+            ['email' => $user->email],
+            function (CanResetPassword $user, string $token): void {
+                $notification = app(FilamentResetPasswordNotification::class, ['token' => $token]);
+                $notification->url = Filament::getResetPasswordUrl($token, $user);
+
+                $user->notify($notification);
+            },
+        );
     }
 }

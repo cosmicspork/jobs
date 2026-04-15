@@ -3,7 +3,7 @@
 use App\Filament\Pages\AdminUsers;
 use App\Mail\WelcomeUser;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use Filament\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -30,7 +30,11 @@ it('creates a user, sends welcome + reset emails, and never exposes the password
         ->and($user->is_admin)->toBeFalse();
 
     Mail::assertSent(WelcomeUser::class, fn ($mail) => $mail->hasTo('new@example.com'));
-    Notification::assertSentTo($user, ResetPassword::class);
+    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) {
+        expect($notification->url)->toContain('password-reset/reset');
+
+        return true;
+    });
 });
 
 it('lets admin send a password reset for an existing user', function () {
@@ -42,7 +46,11 @@ it('lets admin send a password reset for an existing user', function () {
         ->callTableAction('sendPasswordReset', $target)
         ->assertNotified();
 
-    Notification::assertSentTo($target, ResetPassword::class);
+    Notification::assertSentTo($target, ResetPassword::class, function (ResetPassword $notification) {
+        expect($notification->url)->toContain('password-reset/reset');
+
+        return true;
+    });
 });
 
 it('lets admin edit a users core fields', function () {
