@@ -201,6 +201,9 @@
 
         <div class="footer">
             {{ config('app.name') }} &middot; {{ config('app.url') }}
+            <div style="margin-top: 6px;">
+                <a href="{{ $unsubscribeUrl }}" style="color: #6b7280;">Pause daily digest</a>
+            </div>
         </div>
     </div>
 </body>

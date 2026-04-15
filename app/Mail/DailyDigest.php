@@ -9,6 +9,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\URL;
 
 class DailyDigest extends Mailable
 {
@@ -41,6 +42,9 @@ class DailyDigest extends Mailable
     {
         return new Content(
             view: 'mail.daily-digest',
+            with: [
+                'unsubscribeUrl' => URL::signedRoute('digest.unsubscribe', ['user' => $this->user->id]),
+            ],
         );
     }
 }

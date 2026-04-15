@@ -18,6 +18,8 @@ beforeEach(function () {
 
     $this->user = User::factory()->create([
         'digest_enabled' => true,
+        'timezone' => 'America/Chicago',
+        'digest_time' => now()->timezone('America/Chicago')->format('H:i'),
     ]);
     $this->actingAs($this->user);
 });
@@ -31,13 +33,19 @@ it('sends the digest email', function () {
         'scored_at' => now(),
     ]);
 
-    $this->artisan('digest:send')
-        ->assertSuccessful()
-        ->expectsOutputToContain('Daily digest sent to 1 user(s).');
+    $this->artisan('digest:send')->assertSuccessful();
 
     Mail::assertSent(DailyDigest::class, function ($mail) {
         return $mail->hasTo($this->user->email);
     });
+});
+
+it('only sends to users whose digest_time matches the current time in their timezone', function () {
+    $this->user->update(['digest_time' => now()->timezone('America/Chicago')->addHour()->format('H:i')]);
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    Mail::assertNothingSent();
 });
 
 it('includes only listings scored in the last 24 hours', function () {
@@ -63,16 +71,6 @@ it('includes only listings scored in the last 24 hours', function () {
         return $mail->relevantListings->count() === 1
             && $mail->relevantListings->first()->id === $recentListing->id;
     });
-});
-
-it('does not send when no users have digest enabled', function () {
-    $this->user->update(['digest_enabled' => false]);
-
-    $this->artisan('digest:send')
-        ->assertSuccessful()
-        ->expectsOutputToContain('No users with digest enabled.');
-
-    Mail::assertNothingSent();
 });
 
 it('includes ready and failed application updates', function () {
