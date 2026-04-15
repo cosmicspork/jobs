@@ -8,7 +8,7 @@ it('renders the login page without JS errors', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('lets a user log in and lands on the dashboard with the profile-incomplete banner', function () {
+it('lets a user log in and lands on home with the profile-completion checklist', function () {
     User::factory()->create([
         'email' => 'smoke@example.com',
         'password' => bcrypt('password'),
@@ -22,7 +22,7 @@ it('lets a user log in and lands on the dashboard with the profile-incomplete ba
         ->assertNoJavascriptErrors();
 });
 
-it('renders the request-a-board page for a logged-in user with no JS errors', function () {
+it('renders the home page with the request-a-board section for a logged-in user', function () {
     User::factory()->ic()->create([
         'email' => 'ic@example.com',
         'password' => bcrypt('password'),
@@ -32,11 +32,8 @@ it('renders the request-a-board page for a logged-in user with no JS errors', fu
         ->fill('input[type="email"]', 'ic@example.com')
         ->fill('input[type="password"]', 'password')
         ->click('button[type="submit"]')
-        ->assertSee('Dashboard');
-
-    visit('/request-board')
-        ->assertSee('Request a Job Board')
-        ->assertSee('Send Request')
+        ->assertSee('Home')
+        ->assertSee('Request a job board')
         ->assertNoJavascriptErrors();
 });
 
@@ -51,7 +48,7 @@ it('renders the admin users page with invite action for an admin', function () {
         ->fill('input[type="email"]', 'admin@example.com')
         ->fill('input[type="password"]', 'password')
         ->click('button[type="submit"]')
-        ->assertSee('Dashboard');
+        ->assertSee('Home');
 
     visit('/admin-users')
         ->assertSee('Invite User')
