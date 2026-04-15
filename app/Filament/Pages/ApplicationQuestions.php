@@ -35,6 +35,11 @@ class ApplicationQuestions extends Page
 
     protected static ?int $navigationSort = 2;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     private const EMPTY_QUESTIONS = [['question' => '', 'answer' => '']];
 
     /** @var array<string, mixed>|null */

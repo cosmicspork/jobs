@@ -7,9 +7,8 @@ beforeEach(function () {
     $this->user = login(User::factory()->create([
         'name' => 'Josh Bowen',
         'title' => 'Engineering Manager',
-        'summaries' => ['em' => 'EM summary', 'ic' => 'IC summary'],
-        'leadership_skills' => ['Team Building'],
-        'technical_depth' => ['languages' => ['PHP']],
+        'summary' => 'A tailored summary.',
+        'skills' => ['Team Building', 'PHP'],
         'experience' => [
             [
                 'role' => 'Software Developer',

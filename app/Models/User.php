@@ -22,9 +22,8 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'title',
-        'summaries',
-        'leadership_skills',
-        'technical_depth',
+        'summary',
+        'skills',
         'experience',
         'education',
         'experience_years',
@@ -80,7 +79,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Get the profile data in the same shape as the old config('profile') format.
+     * Get the profile data as a plain array (used by AI agents).
      *
      * @return array<string, mixed>
      */
@@ -89,13 +88,14 @@ class User extends Authenticatable implements FilamentUser
         return [
             'name' => $this->name,
             'email' => $this->email,
-            'summaries' => $this->summaries ?? [],
-            'leadership_skills' => $this->leadership_skills ?? [],
-            'technical_depth' => $this->technical_depth ?? [],
+            'title' => $this->title,
+            'summary' => $this->summary,
+            'skills' => $this->skills ?? [],
             'experience' => $this->experience ?? [],
             'education' => $this->education ?? [],
             'experience_years' => $this->experience_years,
             'preferences' => $this->preferences ?? [],
+            'role_type' => $this->preferences['role_type'] ?? 'both',
         ];
     }
 
@@ -179,9 +179,9 @@ class User extends Authenticatable implements FilamentUser
     public function hasMinimumProfile(): bool
     {
         return ! empty($this->title)
-            && ! empty($this->technical_depth)
-            && isset($this->preferences['remote'])
-            && (! empty($this->summaries['em']) || ! empty($this->summaries['ic']));
+            && ! empty($this->summary)
+            && ! empty($this->skills)
+            && isset($this->preferences['remote']);
     }
 
     /**
@@ -192,9 +192,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'summaries' => 'array',
-            'leadership_skills' => 'array',
-            'technical_depth' => 'array',
+            'skills' => 'array',
             'experience' => 'array',
             'education' => 'array',
             'preferences' => 'array',

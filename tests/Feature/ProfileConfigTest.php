@@ -2,15 +2,14 @@
 
 use App\Models\User;
 
-it('has all required top-level keys from getProfileData', function () {
+it('returns expected keys from getProfileData', function () {
     $user = User::factory()->create([
-        'summaries' => ['em' => 'EM summary', 'ic' => 'IC summary'],
-        'leadership_skills' => ['Team Building', 'Mentoring'],
-        'technical_depth' => ['languages' => ['PHP'], 'frameworks' => ['Laravel']],
+        'summary' => 'A tailored summary.',
+        'skills' => ['PHP', 'Laravel', 'Mentorship'],
         'experience' => [['role' => 'Dev', 'company' => 'TestCo']],
-        'education' => [['degree' => 'BS CS']],
+        'education' => ['BS CS'],
         'experience_years' => '9+',
-        'preferences' => ['salary_min' => 120000],
+        'preferences' => ['salary_min' => 120000, 'role_type' => 'em'],
     ]);
 
     $profile = $user->getProfileData();
@@ -18,36 +17,27 @@ it('has all required top-level keys from getProfileData', function () {
     expect($profile)->toHaveKeys([
         'name',
         'email',
-        'summaries',
-        'leadership_skills',
+        'title',
+        'summary',
+        'skills',
         'experience',
         'education',
-        'technical_depth',
         'experience_years',
         'preferences',
+        'role_type',
     ]);
 });
 
-it('has em and ic summaries', function () {
+it('returns skills as a flat non-empty array', function () {
     $user = User::factory()->create([
-        'summaries' => ['em' => 'EM summary text', 'ic' => 'IC summary text'],
+        'skills' => ['PHP', 'Laravel', 'Kubernetes', 'Mentorship'],
     ]);
 
-    $summaries = $user->getProfileData()['summaries'];
-
-    expect($summaries)->toHaveKeys(['em', 'ic'])
-        ->and($summaries['em'])->toBeString()->not->toBeEmpty()
-        ->and($summaries['ic'])->toBeString()->not->toBeEmpty();
-});
-
-it('has leadership skills as a non-empty array', function () {
-    $user = User::factory()->create([
-        'leadership_skills' => ['Team Building', 'Mentoring'],
-    ]);
-
-    expect($user->getProfileData()['leadership_skills'])
+    expect($user->getProfileData()['skills'])
         ->toBeArray()
-        ->not->toBeEmpty();
+        ->not->toBeEmpty()
+        ->toContain('PHP')
+        ->toContain('Mentorship');
 });
 
 it('returns prompts via getPrompt method', function () {
@@ -66,6 +56,14 @@ it('returns prompts via getPrompt method', function () {
         ->and($user->getPrompt('application_questions'))->toBe('Custom AQ prompt');
 });
 
+it('exposes role_type defaulting to "both" when not set', function () {
+    $user = User::factory()->create([
+        'preferences' => ['salary_min' => 100000],
+    ]);
+
+    expect($user->getProfileData()['role_type'])->toBe('both');
+});
+
 it('has experience years and salary minimum', function () {
     $user = User::factory()->create([
         'experience_years' => '9+',
@@ -76,28 +74,4 @@ it('has experience years and salary minimum', function () {
 
     expect($profile['experience_years'])->toBe('9+')
         ->and($profile['preferences']['salary_min'])->toBe(120000);
-});
-
-it('has technical depth categories', function () {
-    $user = User::factory()->create([
-        'technical_depth' => [
-            'languages' => ['PHP'],
-            'frameworks' => ['Laravel'],
-            'laravel_ecosystem' => ['Livewire'],
-            'databases' => ['MySQL'],
-            'devops' => ['Docker'],
-            'cloud' => ['AWS'],
-        ],
-    ]);
-
-    $depth = $user->getProfileData()['technical_depth'];
-
-    expect($depth)->toHaveKeys([
-        'languages',
-        'frameworks',
-        'laravel_ecosystem',
-        'databases',
-        'devops',
-        'cloud',
-    ]);
 });

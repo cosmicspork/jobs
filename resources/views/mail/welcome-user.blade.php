@@ -27,7 +27,7 @@
         <p>Thanks for joining {{ config('app.name') }}. Here's how to get started:</p>
         <ol>
             <li><strong>Set your password.</strong> You should receive a separate email with a link to set your password. If it doesn't arrive, use the <a href="{{ $forgotPasswordUrl }}">forgot password</a> link.</li>
-            <li><strong>Fill out your profile.</strong> Add your title, summaries, skills, and preferences. Scoring quality depends on it.</li>
+            <li><strong>Fill out your profile.</strong> Add your title, summary, skills, and preferences. Scoring quality depends on it.</li>
             <li><strong>Subscribe to job boards.</strong> Pick which boards to pull listings from on the Profile page.</li>
             <li><strong>Wait for your first digest.</strong> Once scoring runs, you'll get a daily email summarizing relevant matches.</li>
         </ol>
