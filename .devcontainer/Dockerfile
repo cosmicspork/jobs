@@ -71,6 +71,10 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN npx --yes playwright@latest install-deps chromium \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 COPY valkey.conf /etc/supervisor/conf.d/valkey.conf
 
 RUN mkdir -p ${HOME} && chown -R ${USERNAME}:${USERNAME} ${HOME} \
