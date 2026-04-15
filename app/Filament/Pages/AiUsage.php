@@ -22,6 +22,13 @@ class AiUsage extends Page
 
     protected static ?int $navigationSort = 99;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Admin';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->is_admin ?? false;
+    }
+
     protected function getHeaderWidgets(): array
     {
         return [
