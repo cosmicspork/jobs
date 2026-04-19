@@ -2,9 +2,8 @@
 
 namespace App\Services\Scrapers;
 
-use DOMDocument;
-use DOMXPath;
 use Generator;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -12,75 +11,112 @@ class HnHiringScraper implements ScraperInterface
 {
     use ParsesSalary;
 
-    protected string $url = 'https://nchelluri.github.io/hnjobs/';
+    protected string $searchUrl = 'https://hn.algolia.com/api/v1/search';
+
+    protected string $searchByDateUrl = 'https://hn.algolia.com/api/v1/search_by_date';
+
+    protected int $hitsPerPage = 1000;
 
     /**
      * @return Generator<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
      */
     public function scrape(): Generator
     {
-        $response = Http::get($this->url);
+        $storyId = $this->latestHiringStoryId();
 
-        if (! $response->ok()) {
+        if ($storyId === null) {
             return;
         }
 
-        $html = $response->body();
-        unset($response);
+        $page = 0;
 
-        $dom = new DOMDocument;
-        @$dom->loadHTML($html, LIBXML_NOERROR);
-        unset($html);
+        do {
+            $response = Http::get($this->searchByDateUrl, [
+                'tags' => "comment,story_{$storyId}",
+                'numericFilters' => "parent_id={$storyId}",
+                'hitsPerPage' => $this->hitsPerPage,
+                'page' => $page,
+            ]);
 
-        $xpath = new DOMXPath($dom);
-        $comments = $xpath->query('//div[contains(@class, "content") and not(@style)]');
-
-        if (! $comments || $comments->length === 0) {
-            return;
-        }
-
-        foreach ($comments as $comment) {
-            if (! $comment instanceof \DOMElement) {
-                continue;
+            if (! $response->ok()) {
+                return;
             }
 
-            $parsed = $this->parseComment($comment, $xpath);
+            /** @var array{hits?: array<int, array<string, mixed>>, nbPages?: int} $data */
+            $data = $response->json() ?? [];
+            $hits = $data['hits'] ?? [];
 
-            if ($parsed) {
-                yield $parsed;
+            foreach ($hits as $hit) {
+                $parsed = $this->parseHit($hit, $storyId);
+
+                if ($parsed !== null) {
+                    yield $parsed;
+                }
             }
-        }
+
+            $totalPages = (int) ($data['nbPages'] ?? 0);
+            $page++;
+        } while ($page < $totalPages);
     }
 
-    /**
-     * @return array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}|null
-     */
-    protected function parseComment(\DOMElement $comment, DOMXPath $xpath): ?array
+    protected function latestHiringStoryId(): ?int
     {
-        $id = $comment->getAttribute('id');
-        $hnId = Str::after($id, 'comment_');
+        $response = Http::get($this->searchByDateUrl, [
+            'tags' => 'story,author_whoishiring',
+            'query' => 'Ask HN: Who is hiring',
+            'hitsPerPage' => 10,
+        ]);
 
-        if (empty($hnId)) {
+        if (! $response->ok()) {
             return null;
         }
 
-        $linkNode = $xpath->query('.//small/a[contains(@href, "news.ycombinator.com/item")]', $comment)->item(0);
-        $url = $linkNode instanceof \DOMElement ? $linkNode->getAttribute('href') : "https://news.ycombinator.com/item?id={$hnId}";
+        $hits = $this->hitsFrom($response);
 
-        $commentHtml = $comment->ownerDocument->saveHTML($comment);
-        $decoded = html_entity_decode($commentHtml);
-        $decoded = preg_replace('/<br\s*\/?>/i', "\n", $decoded);
-        $decoded = preg_replace('/<\/p>\s*<p>/i', "\n\n", $decoded);
-        $decoded = preg_replace('/<\/?p>/i', "\n", $decoded);
-        $text = strip_tags($decoded);
-        $text = preg_replace('/\s*×\s*/', '', $text);
-        $text = trim(preg_replace('/by \S+\s*Original Post.*?UTC\s*(Prev\s*\|?\s*)?(Next\s*)?\s*/s', '', $text));
+        foreach ($hits as $hit) {
+            $title = (string) ($hit['title'] ?? '');
+
+            if (Str::contains($title, 'Who is hiring', true)) {
+                $id = (int) ($hit['objectID'] ?? 0);
+
+                return $id > 0 ? $id : null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function hitsFrom(Response $response): array
+    {
+        /** @var array<int, array<string, mixed>> $hits */
+        $hits = $response->json('hits') ?? [];
+
+        return $hits;
+    }
+
+    /**
+     * @param  array<string, mixed>  $hit
+     * @return array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}|null
+     */
+    protected function parseHit(array $hit, int $storyId): ?array
+    {
+        $hnId = (string) ($hit['objectID'] ?? '');
+        $commentHtml = (string) ($hit['comment_text'] ?? '');
+
+        if ($hnId === '' || $commentHtml === '') {
+            return null;
+        }
+
+        $text = $this->htmlToText($commentHtml);
 
         if (Str::length($text) < 10) {
             return null;
         }
 
-        $firstLine = Str::before($text, "\n");
+        $firstLine = trim(Str::before($text, "\n"));
         $parts = array_map('trim', explode('|', $firstLine));
 
         if (count($parts) >= 2) {
@@ -91,7 +127,7 @@ class HnHiringScraper implements ScraperInterface
             $title = $firstLine;
         }
 
-        if (empty($company)) {
+        if ($company === '') {
             $company = 'Unknown';
         }
 
@@ -101,14 +137,27 @@ class HnHiringScraper implements ScraperInterface
         return [
             'title' => Str::limit($title, 200),
             'company' => Str::limit($company, 100),
-            'url' => $url,
+            'url' => "https://news.ycombinator.com/item?id={$hnId}",
             'description' => $text,
             'salary_min' => $salary['min'],
             'salary_max' => $salary['max'],
             'remote' => $remote,
             'raw_data' => [
                 'hn_id' => $hnId,
+                'story_id' => $storyId,
+                'author' => (string) ($hit['author'] ?? ''),
+                'created_at' => (string) ($hit['created_at'] ?? ''),
             ],
         ];
+    }
+
+    protected function htmlToText(string $html): string
+    {
+        $replaced = preg_replace('/<p>/i', "\n\n", $html) ?? $html;
+        $replaced = preg_replace('/<br\s*\/?>/i', "\n", $replaced) ?? $replaced;
+        $text = strip_tags($replaced);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5);
+
+        return trim($text);
     }
 }
