@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ScrapeBoard implements ShouldQueue
 {
@@ -24,35 +25,82 @@ class ScrapeBoard implements ShouldQueue
         /** @var ScraperInterface $scraper */
         $scraper = app($this->scraperClass);
 
-        $total = 0;
-        $created = 0;
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = iterator_to_array($scraper->scrape(), preserve_keys: false);
+        $total = count($rows);
 
-        foreach ($scraper->scrape() as $data) {
-            $listing = Listing::query()->updateOrCreate(
-                ['url' => $data['url']],
-                [
-                    'title' => $data['title'],
-                    'company' => $data['company'],
-                    'description' => $data['description'],
-                    'salary_min' => $data['salary_min'],
-                    'salary_max' => $data['salary_max'],
-                    'remote' => $data['remote'],
-                    'board' => $this->boardKey,
-                    'raw_data' => $data['raw_data'],
-                    'scraped_at' => now(),
-                ],
-            );
+        if ($total === 0) {
+            Log::info("Scraped {$this->boardKey}: 0 listings found.");
 
-            if ($listing->wasRecentlyCreated) {
-                $userIds = DB::table('board_user')
-                    ->where('board_key', $this->boardKey)
-                    ->pluck('user_id');
+            return;
+        }
 
-                $listing->users()->attach($userIds);
-                $created++;
+        $now = now();
+        $existingUrls = array_flip(
+            Listing::query()
+                ->whereIn('url', array_column($rows, 'url'))
+                ->pluck('url')
+                ->all()
+        );
+
+        /** @var array<int, array<string, mixed>> $payload */
+        $payload = [];
+        /** @var array<int, string> $newListingIds */
+        $newListingIds = [];
+
+        foreach ($rows as $data) {
+            $id = (string) Str::ulid();
+
+            if (! isset($existingUrls[$data['url']])) {
+                $newListingIds[] = $id;
             }
 
-            $total++;
+            $payload[] = [
+                'id' => $id,
+                'title' => $data['title'],
+                'company' => $data['company'],
+                'url' => $data['url'],
+                'description' => $data['description'],
+                'salary_min' => $data['salary_min'],
+                'salary_max' => $data['salary_max'],
+                'remote' => (int) (bool) $data['remote'],
+                'board' => $this->boardKey,
+                'raw_data' => json_encode($data['raw_data']),
+                'scraped_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        Listing::query()->upsert($payload, ['url'], [
+            'title', 'company', 'description', 'salary_min', 'salary_max',
+            'remote', 'board', 'raw_data', 'scraped_at', 'updated_at',
+        ]);
+
+        $created = count($newListingIds);
+
+        if ($created > 0) {
+            $userIds = DB::table('board_user')
+                ->where('board_key', $this->boardKey)
+                ->pluck('user_id')
+                ->all();
+
+            if ($userIds !== []) {
+                $pivots = [];
+                foreach ($newListingIds as $listingId) {
+                    foreach ($userIds as $userId) {
+                        $pivots[] = [
+                            'id' => (string) Str::ulid(),
+                            'listing_id' => $listingId,
+                            'user_id' => $userId,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+                }
+
+                DB::table('listing_user')->insert($pivots);
+            }
         }
 
         Log::info("Scraped {$this->boardKey}: {$total} listings found, {$created} new.");
