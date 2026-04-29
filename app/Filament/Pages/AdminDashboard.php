@@ -4,7 +4,9 @@ namespace App\Filament\Pages;
 
 use App\Filament\Widgets\AdminOverviewStats;
 use App\Filament\Widgets\ListingVolumeSparklines;
+use App\Filament\Widgets\PipelineHealth;
 use App\Filament\Widgets\RelevanceByBoardBars;
+use App\Filament\Widgets\ScrapeHealth;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -35,6 +37,8 @@ class AdminDashboard extends Page
     {
         return [
             AdminOverviewStats::class,
+            ScrapeHealth::class,
+            PipelineHealth::class,
             ListingVolumeSparklines::class,
             RelevanceByBoardBars::class,
         ];

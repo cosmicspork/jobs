@@ -21,8 +21,8 @@ class AdminOverviewStats extends StatsOverviewWidget
         /** @var object{total: int, today: int, this_week: int} $listings */
         $listings = Listing::query()
             ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN DATE(scraped_at) = ? THEN 1 ELSE 0 END) as today', [$today])
-            ->selectRaw('SUM(CASE WHEN scraped_at >= ? THEN 1 ELSE 0 END) as this_week', [$weekStart])
+            ->selectRaw('SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as today', [$today])
+            ->selectRaw('SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as this_week', [$weekStart])
             ->first();
 
         /** @var object{total: int, scored: int} $coverage */

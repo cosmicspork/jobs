@@ -11,7 +11,7 @@ class RelevanceByBoardBars extends StatsOverviewWidget
 {
     protected ?string $pollingInterval = null;
 
-    protected ?string $heading = 'Relevance by Board';
+    protected ?string $heading = 'Relevance by Board (Last 30 Days)';
 
     /** @var array<string, string> */
     private const BOARD_LABELS = [
@@ -21,8 +21,10 @@ class RelevanceByBoardBars extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        $since = now()->subDays(30)->startOfDay();
+
         $rows = ListingUser::query()
-            ->whereNotNull('listing_user.scored_at')
+            ->where('listing_user.scored_at', '>=', $since)
             ->join('listings', 'listings.id', '=', 'listing_user.listing_id')
             ->selectRaw('listings.board, listing_user.relevance, COUNT(*) as count')
             ->groupBy('listings.board', 'listing_user.relevance')

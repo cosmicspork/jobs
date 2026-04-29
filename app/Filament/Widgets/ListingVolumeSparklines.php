@@ -11,7 +11,7 @@ class ListingVolumeSparklines extends StatsOverviewWidget
 {
     protected ?string $pollingInterval = null;
 
-    protected ?string $heading = 'Listings Scraped (Last 30 Days)';
+    protected ?string $heading = 'New Listings (Last 30 Days)';
 
     /** @var array<string, array{label: string, color: string}> */
     private const BOARDS = [
@@ -25,8 +25,8 @@ class ListingVolumeSparklines extends StatsOverviewWidget
 
         /** @var Collection<int, object{board: string, date: string, count: int}> $rows */
         $rows = Listing::query()
-            ->where('scraped_at', '>=', $since)
-            ->selectRaw('board, DATE(scraped_at) as date, COUNT(*) as count')
+            ->where('created_at', '>=', $since)
+            ->selectRaw('board, DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('board', 'date')
             ->get();
 
