@@ -7,6 +7,7 @@ use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Models\User;
 use App\Relevance;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -61,8 +62,9 @@ it('reports when no unscored listings exist', function () {
         ->expectsOutputToContain('No unscored listings found');
 });
 
-it('skips users whose profiles are incomplete', function () {
+it('skips users whose profiles are incomplete and logs a warning', function () {
     Queue::fake();
+    Log::spy();
 
     $bareUser = User::factory()->create();
     $listing = Listing::factory()->create(['remote' => true, 'salary_max' => null]);
@@ -75,6 +77,9 @@ it('skips users whose profiles are incomplete', function () {
 
     Queue::assertNothingPushed();
     expect(ListingUser::query()->where('user_id', $bareUser->id)->first()->scored_at)->toBeNull();
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context) => $message === 'Skipping scoring for user with incomplete profile'
+            && $context['user_id'] === $bareUser->id);
 });
 
 it('marks heuristically-filtered listings as irrelevant without dispatching scoring', function () {

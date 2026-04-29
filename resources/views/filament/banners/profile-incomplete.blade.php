@@ -4,7 +4,7 @@
     $onHome = request()->routeIs('filament.admin.pages.home');
 @endphp
 
-@if ($user && ! $user->is_admin && ! $user->hasMinimumProfile() && ! $onProfile && ! $onHome)
+@if ($user && ! $user->hasMinimumProfile() && ! $onProfile && ! $onHome)
     <div class="fi-banner bg-amber-100 dark:bg-amber-900/40 border-b border-amber-300 dark:border-amber-700 px-6 py-3">
         <div class="flex items-center justify-between gap-4">
             <div class="text-sm text-amber-900 dark:text-amber-100">

@@ -152,6 +152,11 @@ class Profile extends Page
                                 ->columnSpanFull(),
                             Toggle::make('digest_enabled')
                                 ->label('Daily digest email')
+                                ->helperText(fn (): ?string => auth()->user()->hasMinimumProfile()
+                                    ? null
+                                    : 'Finish your profile (title, summary, skills, remote preference) before enabling — scoring is paused until then, so the digest would be empty.')
+                                ->disabled(fn (): bool => ! auth()->user()->hasMinimumProfile())
+                                ->saved()
                                 ->columnSpan(2),
                             TextInput::make('digest_time')
                                 ->label('Send time (HH:MM)')

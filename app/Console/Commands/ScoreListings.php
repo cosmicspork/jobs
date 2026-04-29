@@ -14,6 +14,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 #[Signature('jobs:score')]
@@ -77,6 +78,12 @@ class ScoreListings extends Command
 
         if (! $user->hasMinimumProfile()) {
             $counts['skippedIncomplete']++;
+
+            Log::warning('Skipping scoring for user with incomplete profile', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'pivot_id' => $pivot->id,
+            ]);
 
             return;
         }

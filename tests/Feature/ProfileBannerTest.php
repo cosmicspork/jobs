@@ -9,8 +9,15 @@ it('shows the profile-incomplete banner to non-admin users with bare profiles', 
         ->assertSee('Finish setting up your profile');
 });
 
-it('hides the banner for admin users', function () {
+it('shows the banner to admin users with bare profiles', function () {
     login(User::factory()->create(['is_admin' => true]));
+
+    $this->get(route('filament.admin.resources.listings.index'))
+        ->assertSee('Finish setting up your profile');
+});
+
+it('hides the banner for admin users with complete profiles', function () {
+    login(User::factory()->ic()->create(['is_admin' => true]));
 
     $this->get(route('filament.admin.resources.listings.index'))
         ->assertDontSee('Finish setting up your profile');

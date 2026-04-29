@@ -8,6 +8,7 @@ use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Models\User;
 use App\Relevance;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
@@ -16,7 +17,7 @@ beforeEach(function () {
     // Disable digest for any seeded users so only our test user triggers sends
     User::query()->update(['digest_enabled' => false]);
 
-    $this->user = User::factory()->create([
+    $this->user = User::factory()->ic()->create([
         'digest_enabled' => true,
         'timezone' => 'America/Chicago',
         'digest_time' => now()->timezone('America/Chicago')->format('H:i'),
@@ -38,6 +39,23 @@ it('sends the digest email', function () {
     Mail::assertSent(DailyDigest::class, function ($mail) {
         return $mail->hasTo($this->user->email);
     });
+});
+
+it('skips users with incomplete profiles and logs a warning', function () {
+    Log::spy();
+
+    $bare = User::factory()->create([
+        'digest_enabled' => true,
+        'timezone' => 'America/Chicago',
+        'digest_time' => now()->timezone('America/Chicago')->format('H:i'),
+    ]);
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    Mail::assertNotSent(DailyDigest::class, fn (DailyDigest $mail) => $mail->hasTo($bare->email));
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context) => $message === 'Skipping daily digest for user with incomplete profile'
+            && $context['user_id'] === $bare->id);
 });
 
 it('only sends to users whose digest_time matches the current time in their timezone', function () {

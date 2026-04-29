@@ -13,6 +13,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 #[Signature('digest:send')]
@@ -28,6 +29,15 @@ class SendDailyDigest extends Command
             ->cursor()
             ->filter($this->isDueNow(...))
             ->each(function (User $user) use ($since, &$sent) {
+                if (! $user->hasMinimumProfile()) {
+                    Log::warning('Skipping daily digest for user with incomplete profile', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                    ]);
+
+                    return;
+                }
+
                 Mail::to($user->email)->send($this->buildDigest($user, $since));
                 $sent++;
             });
