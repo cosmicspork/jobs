@@ -7,7 +7,6 @@ use App\Filament\Resources\Listings\Concerns\HasListingActions;
 use App\Filament\Resources\Listings\ListingResource;
 use App\Models\Application;
 use App\Models\Listing;
-use App\Models\ListingUser;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -23,7 +22,7 @@ class ViewListing extends ViewRecord
     {
         parent::mount($record);
 
-        $pivot = $this->getUserPivot();
+        $pivot = $this->getUserPivotForAction();
 
         if ($pivot && ! $pivot->read_at) {
             $pivot->update(['read_at' => now()]);
@@ -38,9 +37,9 @@ class ViewListing extends ViewRecord
                 ->label('Shortlist')
                 ->icon('heroicon-o-clipboard-document-check')
                 ->color('success')
-                ->visible(fn (): bool => (bool) $this->getUserPivot()?->shortlisted_at === false)
+                ->visible(fn (): bool => (bool) $this->getUserPivotForAction()?->shortlisted_at === false)
                 ->action(function (): void {
-                    $this->getUserPivot()?->shortlist();
+                    $this->getUserPivotForAction()?->shortlist();
 
                     Notification::make()
                         ->title('Listing shortlisted')
@@ -63,17 +62,12 @@ class ViewListing extends ViewRecord
             $this->getToggleStarredAction(),
             EditAction::make(),
             Action::make('toggleRead')
-                ->label(fn (): string => $this->getUserPivot()?->read_at ? 'Mark Unread' : 'Mark Read')
-                ->icon(fn (): string => $this->getUserPivot()?->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
+                ->label(fn (): string => $this->getUserPivotForAction()?->read_at ? 'Mark Unread' : 'Mark Read')
+                ->icon(fn (): string => $this->getUserPivotForAction()?->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
                 ->action(function (): void {
-                    $this->getUserPivot()?->toggleRead();
+                    $this->getUserPivotForAction()?->toggleRead();
                 }),
             $this->getJobLinkAction(),
         ];
-    }
-
-    private function getUserPivot(): ?ListingUser
-    {
-        return ListingUser::forUserListing(auth()->id(), $this->record->getKey());
     }
 }

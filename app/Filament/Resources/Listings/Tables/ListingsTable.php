@@ -30,7 +30,7 @@ class ListingsTable
                     ->select('inner_lu.id')
                     ->whereColumn('inner_lu.listing_id', 'listings.id')
                     ->where('inner_lu.user_id', $userId)
-                    ->orderByRaw("CASE inner_lu.relevance WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END")
+                    ->orderByRaw(ListingUser::orderByRelevanceSql('inner_lu.relevance'))
                     ->orderByDesc('inner_lu.scored_at')
                     ->limit(1);
 

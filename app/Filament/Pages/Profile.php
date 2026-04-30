@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\TargetProfile;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -53,19 +52,7 @@ class Profile extends Page
             'skills' => $user->skills ?? [],
             'experience' => $user->experience ?? [],
             'education' => $user->education ?? [],
-            'targets' => $user->targetProfiles->map(fn (TargetProfile $t) => [
-                'id' => $t->id,
-                'name' => $t->name,
-                'is_active' => $t->is_active,
-                'positioning' => $t->positioning,
-                'target_titles' => $t->target_titles ?? [],
-                'remote' => $t->criterion('remote'),
-                'salary_min' => $t->criterion('salary_min'),
-                'locations' => $t->criterion('locations', []),
-                'must_have_keywords' => $t->criterion('must_have_keywords', []),
-                'avoid_keywords' => $t->criterion('avoid_keywords', []),
-                'sort_order' => $t->sort_order,
-            ])->all(),
+            'targets' => $user->targetProfilesForForm(),
             'boards' => $user->subscribedBoardKeys(),
             'digest_enabled' => $user->digest_enabled,
             'digest_time' => $user->digest_time,
@@ -247,7 +234,7 @@ class Profile extends Page
             'timezone' => $data['timezone'] ?? 'America/Chicago',
         ]);
 
-        $this->syncTargets($user, $data['targets'] ?? []);
+        $user->syncTargetProfiles($data['targets'] ?? []);
 
         $user->syncSubscribedBoards($data['boards'] ?? []);
 
@@ -255,45 +242,5 @@ class Profile extends Page
             ->title('Profile saved')
             ->success()
             ->send();
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     */
-    private function syncTargets(User $user, array $rows): void
-    {
-        $keptIds = [];
-
-        foreach ($rows as $row) {
-            $attrs = [
-                'name' => $row['name'],
-                'positioning' => $row['positioning'] ?? null,
-                'target_titles' => $row['target_titles'] ?? [],
-                'criteria' => [
-                    'remote' => $row['remote'] ?? false,
-                    'salary_min' => isset($row['salary_min']) && $row['salary_min'] !== '' ? (int) $row['salary_min'] : null,
-                    'locations' => $row['locations'] ?? [],
-                    'must_have_keywords' => $row['must_have_keywords'] ?? [],
-                    'avoid_keywords' => $row['avoid_keywords'] ?? [],
-                ],
-                'is_active' => (bool) ($row['is_active'] ?? true),
-                'sort_order' => (int) ($row['sort_order'] ?? 0),
-            ];
-
-            if (! empty($row['id'])) {
-                $target = $user->targetProfiles()->where('id', $row['id'])->first();
-                if ($target) {
-                    $target->update($attrs);
-                    $keptIds[] = $target->id;
-
-                    continue;
-                }
-            }
-
-            $created = $user->targetProfiles()->create($attrs);
-            $keptIds[] = $created->id;
-        }
-
-        $user->targetProfiles()->whereNotIn('id', $keptIds)->delete();
     }
 }

@@ -57,19 +57,13 @@ class SendDailyDigest extends Command
 
     protected function buildDigest(User $user, Carbon $since): DailyDigest
     {
-        $relevanceOrder = [
-            Relevance::Relevant->value => 0,
-            Relevance::Maybe->value => 1,
-            Relevance::Irrelevant->value => 2,
-        ];
-
         // Pivots scored in the past day — multiple per listing (one per active target).
         // Dedupe to the best-relevance pivot per listing for digest display.
         $scoredPivots = ListingUser::query()
             ->where('user_id', $user->id)
-            ->whereIn('relevance', array_keys($relevanceOrder))
+            ->whereNotNull('relevance')
             ->where('scored_at', '>=', $since)
-            ->orderByRaw("CASE relevance WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END")
+            ->orderByRaw(ListingUser::orderByRelevanceSql())
             ->orderByDesc('scored_at')
             ->with(['listing', 'targetProfile'])
             ->get()

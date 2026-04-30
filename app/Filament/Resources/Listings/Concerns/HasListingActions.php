@@ -14,70 +14,67 @@ use Filament\Schemas\Components\Component;
 
 trait HasListingActions
 {
+    /**
+     * @return array<int, Action>
+     */
     protected function getGenerateActions(): array
     {
         return [
-            Action::make('generateResume')
-                ->label('Generate Resume')
-                ->icon('heroicon-o-document-text')
-                ->color('primary')
-                ->schema(fn () => $this->buildTargetSelectSchema())
-                ->requiresConfirmation()
-                ->action(function (array $data): void {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-                    $target = $this->resolveTargetForAction($data);
-
-                    if (! $target instanceof TargetProfile) {
-                        Notification::make()->title('No active target')->body('Add an active target before generating an application.')->danger()->send();
-
-                        return;
-                    }
-
-                    Application::generateResume($listing, auth()->user(), $target);
-                    Notification::make()->title('Resume generation started')->body("Generating resume for {$listing->company} ({$target->name})...")->success()->send();
-                }),
-            Action::make('generateCoverLetter')
-                ->label('Generate Cover Letter')
-                ->icon('heroicon-o-envelope')
-                ->color('primary')
-                ->schema(fn () => $this->buildTargetSelectSchema())
-                ->requiresConfirmation()
-                ->action(function (array $data): void {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-                    $target = $this->resolveTargetForAction($data);
-
-                    if (! $target instanceof TargetProfile) {
-                        Notification::make()->title('No active target')->body('Add an active target before generating an application.')->danger()->send();
-
-                        return;
-                    }
-
-                    Application::generateCoverLetter($listing, auth()->user(), $target);
-                    Notification::make()->title('Cover letter generation started')->body("Generating cover letter for {$listing->company} ({$target->name})...")->success()->send();
-                }),
-            Action::make('generateBoth')
-                ->label('Generate Both')
-                ->icon('heroicon-o-document-duplicate')
-                ->color('primary')
-                ->schema(fn () => $this->buildTargetSelectSchema())
-                ->requiresConfirmation()
-                ->action(function (array $data): void {
-                    /** @var Listing $listing */
-                    $listing = $this->record;
-                    $target = $this->resolveTargetForAction($data);
-
-                    if (! $target instanceof TargetProfile) {
-                        Notification::make()->title('No active target')->body('Add an active target before generating an application.')->danger()->send();
-
-                        return;
-                    }
-
-                    Application::generateBoth($listing, auth()->user(), $target);
-                    Notification::make()->title('Application generation started')->body("Generating resume and cover letter for {$listing->company} ({$target->name})...")->success()->send();
-                }),
+            $this->buildGenerateAction(
+                name: 'generateResume',
+                label: 'Generate Resume',
+                icon: 'heroicon-o-document-text',
+                startedTitle: 'Resume generation started',
+                buildBody: fn (Listing $l, TargetProfile $t): string => "Generating resume for {$l->company} ({$t->name})...",
+                dispatch: fn (Listing $l, TargetProfile $t) => Application::generateResume($l, auth()->user(), $t),
+            ),
+            $this->buildGenerateAction(
+                name: 'generateCoverLetter',
+                label: 'Generate Cover Letter',
+                icon: 'heroicon-o-envelope',
+                startedTitle: 'Cover letter generation started',
+                buildBody: fn (Listing $l, TargetProfile $t): string => "Generating cover letter for {$l->company} ({$t->name})...",
+                dispatch: fn (Listing $l, TargetProfile $t) => Application::generateCoverLetter($l, auth()->user(), $t),
+            ),
+            $this->buildGenerateAction(
+                name: 'generateBoth',
+                label: 'Generate Both',
+                icon: 'heroicon-o-document-duplicate',
+                startedTitle: 'Application generation started',
+                buildBody: fn (Listing $l, TargetProfile $t): string => "Generating resume and cover letter for {$l->company} ({$t->name})...",
+                dispatch: fn (Listing $l, TargetProfile $t) => Application::generateBoth($l, auth()->user(), $t),
+            ),
         ];
+    }
+
+    private function buildGenerateAction(
+        string $name,
+        string $label,
+        string $icon,
+        string $startedTitle,
+        \Closure $buildBody,
+        \Closure $dispatch,
+    ): Action {
+        return Action::make($name)
+            ->label($label)
+            ->icon($icon)
+            ->color('primary')
+            ->schema(fn () => $this->buildTargetSelectSchema())
+            ->requiresConfirmation()
+            ->action(function (array $data) use ($startedTitle, $buildBody, $dispatch): void {
+                /** @var Listing $listing */
+                $listing = $this->record;
+                $target = $this->resolveTargetForAction($data);
+
+                if (! $target instanceof TargetProfile) {
+                    Notification::make()->title('No active target')->body('Add an active target before generating an application.')->danger()->send();
+
+                    return;
+                }
+
+                $dispatch($listing, $target);
+                Notification::make()->title($startedTitle)->body($buildBody($listing, $target))->success()->send();
+            });
     }
 
     protected function getToggleStarredAction(): Action
@@ -113,7 +110,7 @@ trait HasListingActions
             });
     }
 
-    private function getUserPivotForAction(): ?ListingUser
+    protected function getUserPivotForAction(): ?ListingUser
     {
         return ListingUser::forUserListing(auth()->id(), $this->record->getKey());
     }

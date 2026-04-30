@@ -57,7 +57,11 @@ class PipelineHealth extends StatsOverviewWidget
                 ->description($oldestUnscored
                     ? 'oldest '.$oldestUnscored->diffForHumans()
                     : 'all caught up')
-                ->color($unscoredStale ? 'danger' : ($unscoredCount > 0 ? 'warning' : 'success')),
+                ->color(match (true) {
+                    $unscoredStale => 'danger',
+                    $unscoredCount > 0 => 'warning',
+                    default => 'success',
+                }),
 
             Stat::make('Last Successful Score', $lastScoredAt
                     ? $lastScoredAt->diffForHumans(syntax: Carbon::DIFF_RELATIVE_TO_NOW, short: true)

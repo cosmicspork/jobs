@@ -54,7 +54,11 @@ class RelevanceByBoardBars extends StatsOverviewWidget
 
             $stats[] = Stat::make($label, $pct.'% relevant')
                 ->description("{$relevant} relevant · {$maybe} maybe · {$irrelevant} irrelevant")
-                ->color($pct >= 30 ? 'success' : ($pct >= 10 ? 'warning' : 'danger'));
+                ->color(match (true) {
+                    $pct >= 30 => 'success',
+                    $pct >= 10 => 'warning',
+                    default => 'danger',
+                });
         }
 
         return $stats;

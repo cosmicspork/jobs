@@ -66,18 +66,17 @@ class ListingUser extends Pivot
 
     public function toggleRead(): void
     {
-        static::query()
-            ->where('listing_id', $this->listing_id)
-            ->where('user_id', $this->user_id)
-            ->update(['read_at' => $this->read_at ? null : now()]);
+        $this->updateAllForListingUser(['read_at' => $this->read_at ? null : now()]);
     }
 
     public function toggleStarred(): void
     {
-        static::query()
-            ->where('listing_id', $this->listing_id)
-            ->where('user_id', $this->user_id)
-            ->update(['starred_at' => $this->starred_at ? null : now()]);
+        $this->updateAllForListingUser(['starred_at' => $this->starred_at ? null : now()]);
+    }
+
+    public function shortlist(): void
+    {
+        $this->updateAllForListingUser(['shortlisted_at' => now()]);
     }
 
     public static function forUserListing(int $userId, string $listingId): ?static
@@ -85,17 +84,29 @@ class ListingUser extends Pivot
         return static::query()
             ->where('listing_id', $listingId)
             ->where('user_id', $userId)
-            ->orderByRaw("CASE relevance WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END")
+            ->orderByRaw(self::orderByRelevanceSql())
             ->orderByDesc('scored_at')
             ->first();
     }
 
-    public function shortlist(): void
+    /**
+     * SQL fragment that orders pivots best-match-first: relevant, then maybe,
+     * then irrelevant, then unscored. Centralized so callers don't drift.
+     */
+    public static function orderByRelevanceSql(string $column = 'relevance'): string
+    {
+        return "CASE {$column} WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END";
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function updateAllForListingUser(array $values): void
     {
         static::query()
             ->where('listing_id', $this->listing_id)
             ->where('user_id', $this->user_id)
-            ->update(['shortlisted_at' => now()]);
+            ->update($values);
     }
 
     /**

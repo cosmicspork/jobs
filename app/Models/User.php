@@ -207,6 +207,73 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Map this user's target profiles into the flat row shape used by the
+     * profile and admin user-edit forms.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function targetProfilesForForm(): array
+    {
+        return $this->targetProfiles->map(fn (TargetProfile $t): array => [
+            'id' => $t->id,
+            'name' => $t->name,
+            'is_active' => $t->is_active,
+            'positioning' => $t->positioning,
+            'target_titles' => $t->target_titles ?? [],
+            'remote' => $t->criterion('remote'),
+            'salary_min' => $t->criterion('salary_min'),
+            'locations' => $t->criterion('locations', []),
+            'must_have_keywords' => $t->criterion('must_have_keywords', []),
+            'avoid_keywords' => $t->criterion('avoid_keywords', []),
+            'sort_order' => $t->sort_order,
+        ])->all();
+    }
+
+    /**
+     * Persist the target profiles posted from a profile or admin form. Updates
+     * existing rows in place by id, creates new ones, and deletes any not in
+     * the submitted set.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    public function syncTargetProfiles(array $rows): void
+    {
+        $keptIds = [];
+
+        foreach ($rows as $row) {
+            $attrs = [
+                'name' => $row['name'],
+                'positioning' => $row['positioning'] ?? null,
+                'target_titles' => $row['target_titles'] ?? [],
+                'criteria' => [
+                    'remote' => $row['remote'] ?? false,
+                    'salary_min' => isset($row['salary_min']) && $row['salary_min'] !== '' ? (int) $row['salary_min'] : null,
+                    'locations' => $row['locations'] ?? [],
+                    'must_have_keywords' => $row['must_have_keywords'] ?? [],
+                    'avoid_keywords' => $row['avoid_keywords'] ?? [],
+                ],
+                'is_active' => (bool) ($row['is_active'] ?? true),
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+
+            $existing = ! empty($row['id'])
+                ? $this->targetProfiles()->where('id', $row['id'])->first()
+                : null;
+
+            if ($existing) {
+                $existing->update($attrs);
+                $keptIds[] = $existing->id;
+
+                continue;
+            }
+
+            $keptIds[] = $this->targetProfiles()->create($attrs)->id;
+        }
+
+        $this->targetProfiles()->whereNotIn('id', $keptIds)->delete();
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function boardOptions(): array
@@ -242,6 +309,15 @@ class User extends Authenticatable implements FilamentUser
             return false;
         }
 
+        return $this->hasReadyTargetProfile();
+    }
+
+    /**
+     * Whether the user has at least one active target with the fields scoring needs:
+     * positioning, target titles, and a remote preference set.
+     */
+    public function hasReadyTargetProfile(): bool
+    {
         return $this->targetProfiles()
             ->where('is_active', true)
             ->whereNotNull('positioning')

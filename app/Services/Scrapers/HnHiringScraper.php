@@ -3,7 +3,6 @@
 namespace App\Services\Scrapers;
 
 use Generator;
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -71,7 +70,8 @@ class HnHiringScraper implements ScraperInterface
             return null;
         }
 
-        $hits = $this->hitsFrom($response);
+        /** @var array<int, array<string, mixed>> $hits */
+        $hits = $response->json('hits') ?? [];
 
         foreach ($hits as $hit) {
             $title = (string) ($hit['title'] ?? '');
@@ -84,17 +84,6 @@ class HnHiringScraper implements ScraperInterface
         }
 
         return null;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    protected function hitsFrom(Response $response): array
-    {
-        /** @var array<int, array<string, mixed>> $hits */
-        $hits = $response->json('hits') ?? [];
-
-        return $hits;
     }
 
     /**
@@ -153,11 +142,8 @@ class HnHiringScraper implements ScraperInterface
 
     protected function htmlToText(string $html): string
     {
-        $replaced = preg_replace('/<p>/i', "\n\n", $html) ?? $html;
-        $replaced = preg_replace('/<br\s*\/?>/i', "\n", $replaced) ?? $replaced;
-        $text = strip_tags($replaced);
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5);
+        $withBreaks = (string) preg_replace(['/<p>/i', '/<br\s*\/?>/i'], ["\n\n", "\n"], $html);
 
-        return trim($text);
+        return trim(html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5));
     }
 }

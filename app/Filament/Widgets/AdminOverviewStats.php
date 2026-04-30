@@ -57,7 +57,11 @@ class AdminOverviewStats extends StatsOverviewWidget
                 ->color('warning'),
             Stat::make('Scored Coverage', $coveragePct.'%')
                 ->description(number_format($unscored).' unscored')
-                ->color($coveragePct >= 80 ? 'success' : ($coveragePct >= 50 ? 'primary' : 'warning')),
+                ->color(match (true) {
+                    $coveragePct >= 80 => 'success',
+                    $coveragePct >= 50 => 'primary',
+                    default => 'warning',
+                }),
         ];
     }
 }
