@@ -9,7 +9,6 @@ it('returns expected keys from getProfileData', function () {
         'experience' => [['role' => 'Dev', 'company' => 'TestCo']],
         'education' => ['BS CS'],
         'experience_years' => '9+',
-        'preferences' => ['salary_min' => 120000, 'role_type' => 'em'],
     ]);
 
     $profile = $user->getProfileData();
@@ -23,8 +22,6 @@ it('returns expected keys from getProfileData', function () {
         'experience',
         'education',
         'experience_years',
-        'preferences',
-        'role_type',
     ]);
 });
 
@@ -56,22 +53,10 @@ it('returns prompts via getPrompt method', function () {
         ->and($user->getPrompt('application_questions'))->toBe('Custom AQ prompt');
 });
 
-it('exposes role_type defaulting to "both" when not set', function () {
-    $user = User::factory()->create([
-        'preferences' => ['salary_min' => 100000],
-    ]);
-
-    expect($user->getProfileData()['role_type'])->toBe('both');
-});
-
-it('has experience years and salary minimum', function () {
+it('exposes experience_years on getProfileData', function () {
     $user = User::factory()->create([
         'experience_years' => '9+',
-        'preferences' => ['salary_min' => 120000],
     ]);
 
-    $profile = $user->getProfileData();
-
-    expect($profile['experience_years'])->toBe('9+')
-        ->and($profile['preferences']['salary_min'])->toBe(120000);
+    expect($user->getProfileData()['experience_years'])->toBe('9+');
 });

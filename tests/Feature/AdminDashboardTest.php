@@ -34,12 +34,13 @@ function callGetStats(string $widgetClass): array
 }
 
 /** Insert a listing_user pivot bypassing Eloquent so created_at/scored_at are honored exactly. */
-function insertPivot(string $listingId, int $userId, array $overrides = []): void
+function insertPivot(string $listingId, int $userId, string $targetId, array $overrides = []): void
 {
     DB::table('listing_user')->insert([
         'id' => (string) Str::ulid(),
         'listing_id' => $listingId,
         'user_id' => $userId,
+        'target_profile_id' => $targetId,
         'relevance' => null,
         'score_data' => null,
         'scored_at' => null,
@@ -54,6 +55,7 @@ function insertPivot(string $listingId, int $userId, array $overrides = []): voi
 
 beforeEach(function () {
     $this->admin = User::factory()->ic()->create(['is_admin' => true]);
+    $this->target = $this->admin->targetProfiles()->first();
     login($this->admin);
 });
 
@@ -110,7 +112,7 @@ it('flags pipeline health when scoring is dead and pivots are stuck', function (
     // No ListingUser pivots scored. Add an unscored one that's two hours old —
     // bypass Eloquent so created_at is honored (it's not in $fillable).
     $listing = Listing::factory()->create();
-    insertPivot($listing->id, $this->admin->id, [
+    insertPivot($listing->id, $this->admin->id, $this->target->id, [
         'created_at' => now()->subHours(2),
         'updated_at' => now()->subHours(2),
     ]);
@@ -129,6 +131,7 @@ it('shows pipeline health green when scoring is healthy', function () {
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->admin->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now()->subMinutes(30),
     ]);
@@ -148,19 +151,21 @@ it('windows relevance-by-board bars to the last 30 days', function () {
     ListingUser::create([
         'listing_id' => $hn->id,
         'user_id' => $this->admin->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now()->subDays(2),
     ]);
     ListingUser::create([
         'listing_id' => $larajobs->id,
         'user_id' => $this->admin->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Irrelevant,
         'scored_at' => now()->subDays(2),
     ]);
 
     // Ancient scoring outside the 30-day window — should be excluded.
     $oldHn = Listing::factory()->create(['board' => 'hn']);
-    insertPivot($oldHn->id, $this->admin->id, [
+    insertPivot($oldHn->id, $this->admin->id, $this->target->id, [
         'relevance' => Relevance::Irrelevant->value,
         'scored_at' => now()->subDays(60),
         'created_at' => now()->subDays(60),

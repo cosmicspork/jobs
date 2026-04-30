@@ -27,7 +27,7 @@ class AdminDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->is_admin ?? false;
+        return auth()->user()->is_admin;
     }
 
     /**

@@ -18,6 +18,7 @@ class ApplicationQuestionSet extends Model
     protected $fillable = [
         'listing_id',
         'user_id',
+        'target_profile_id',
         'status',
     ];
 
@@ -35,6 +36,14 @@ class ApplicationQuestionSet extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<TargetProfile, $this>
+     */
+    public function targetProfile(): BelongsTo
+    {
+        return $this->belongsTo(TargetProfile::class);
     }
 
     /**

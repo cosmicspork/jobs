@@ -57,21 +57,35 @@ class SendDailyDigest extends Command
 
     protected function buildDigest(User $user, Carbon $since): DailyDigest
     {
+        $relevanceOrder = [
+            Relevance::Relevant->value => 0,
+            Relevance::Maybe->value => 1,
+            Relevance::Irrelevant->value => 2,
+        ];
+
+        // Pivots scored in the past day — multiple per listing (one per active target).
+        // Dedupe to the best-relevance pivot per listing for digest display.
         $scoredPivots = ListingUser::query()
             ->where('user_id', $user->id)
-            ->whereIn('relevance', [Relevance::Relevant->value, Relevance::Maybe->value, Relevance::Irrelevant->value])
+            ->whereIn('relevance', array_keys($relevanceOrder))
             ->where('scored_at', '>=', $since)
-            ->with('listing')
-            ->latest('scored_at')
+            ->orderByRaw("CASE relevance WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END")
+            ->orderByDesc('scored_at')
+            ->with(['listing', 'targetProfile'])
             ->get()
-            ->groupBy('relevance');
+            ->unique('listing_id')
+            ->values()
+            ->groupBy(fn (ListingUser $p) => $p->relevance->value);
 
-        $relevantListings = $scoredPivots->get(Relevance::Relevant->value, collect())->map(function ($pivot) {
+        $attachContext = function (ListingUser $pivot) {
             $pivot->listing->setAttribute('score_data', $pivot->score_data);
+            $pivot->listing->setAttribute('target_name', $pivot->targetProfile?->name);
 
             return $pivot->listing;
-        });
-        $maybeListings = $scoredPivots->get(Relevance::Maybe->value, collect())->pluck('listing');
+        };
+
+        $relevantListings = $scoredPivots->get(Relevance::Relevant->value, collect())->map($attachContext);
+        $maybeListings = $scoredPivots->get(Relevance::Maybe->value, collect())->map($attachContext);
         $irrelevantCount = $scoredPivots->get(Relevance::Irrelevant->value, collect())->count();
 
         $applicationUpdates = Application::query()
@@ -98,9 +112,11 @@ class SendDailyDigest extends Command
         $totalScraped = ListingUser::query()
             ->where('user_id', $user->id)
             ->where('created_at', '>=', $since)
-            ->count();
+            ->distinct('listing_id')
+            ->count('listing_id');
 
         $aiUsageBreakdown = AiUsage::query()
+            ->toBase()
             ->where('user_id', $user->id)
             ->where('created_at', '>=', $since)
             ->selectRaw('model, SUM(cost) as total_cost, COUNT(*) as requests')
@@ -112,8 +128,8 @@ class SendDailyDigest extends Command
             'relevant_count' => $relevantListings->count(),
             'maybe_count' => $maybeListings->count(),
             'irrelevant_count' => $irrelevantCount,
-            'ai_total_cost' => $aiUsageBreakdown->sum('total_cost'),
-            'ai_usage_breakdown' => $aiUsageBreakdown->map(fn ($row) => [
+            'ai_total_cost' => (float) $aiUsageBreakdown->sum('total_cost'),
+            'ai_usage_breakdown' => $aiUsageBreakdown->map(fn (object $row) => [
                 'model' => AiUsage::shortModelName($row->model),
                 'cost' => (float) $row->total_cost,
                 'requests' => (int) $row->requests,

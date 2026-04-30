@@ -15,24 +15,30 @@ it('uses ulids as primary keys', function () {
 
 it('has many applications', function () {
     $user = login();
+    $target = targetFor($user);
     $listing = Listing::factory()->create();
-    Application::factory()->count(3)->create(['listing_id' => $listing->id, 'user_id' => $user->id]);
+    Application::factory()->count(3)->create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $target->id,
+    ]);
 
     expect($listing->applications)->toHaveCount(3);
 });
 
 it('casts score_data to array on pivot', function () {
     $user = login();
+    $target = targetFor($user);
     $listing = Listing::factory()->create();
     $pivot = ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $user->id,
+        'target_profile_id' => $target->id,
         'relevance' => Relevance::Relevant,
         'score_data' => [
             'matched_skills' => ['PHP', 'Laravel'],
             'gaps' => ['Go'],
             'reasoning' => 'Good match for a Laravel developer.',
-            'role_type' => 'ic',
         ],
         'scored_at' => now(),
     ]);
@@ -49,10 +55,12 @@ it('casts remote to boolean', function () {
 
 it('casts scored_at to datetime on pivot', function () {
     $user = login();
+    $target = targetFor($user);
     $listing = Listing::factory()->create();
     $pivot = ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $user->id,
+        'target_profile_id' => $target->id,
         'scored_at' => now(),
     ]);
 
@@ -68,10 +76,12 @@ it('deduplicates listings by url', function () {
 
 it('toggles starred state on pivot', function () {
     $user = login();
+    $target = targetFor($user);
     $listing = Listing::factory()->create();
     $pivot = ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $user->id,
+        'target_profile_id' => $target->id,
     ]);
 
     expect($pivot->starred_at)->toBeNull();
@@ -89,10 +99,12 @@ it('toggles starred state on pivot', function () {
 
 it('can be shortlisted on pivot', function () {
     $user = login();
+    $target = targetFor($user);
     $listing = Listing::factory()->create();
     $pivot = ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $user->id,
+        'target_profile_id' => $target->id,
     ]);
 
     expect($pivot->shortlisted_at)->toBeNull();

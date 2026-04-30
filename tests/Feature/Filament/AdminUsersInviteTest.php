@@ -53,23 +53,35 @@ it('lets admin send a password reset for an existing user', function () {
     });
 });
 
-it('lets admin edit a users core fields', function () {
-    $target = User::factory()->ic()->create(['email' => 'old@example.com']);
+it('lets admin edit a users core fields and target criteria', function () {
+    $editee = User::factory()->ic()->create(['email' => 'old@example.com']);
+    $existingTarget = $editee->targetProfiles()->first();
 
     Livewire::test(AdminUsers::class)
-        ->callTableAction('edit', $target, data: [
+        ->callTableAction('edit', $editee, data: [
             'name' => 'Updated Name',
             'email' => 'new@example.com',
             'is_admin' => true,
-            'title' => $target->title,
-            'summary' => $target->summary ?? '',
-            'skills' => $target->skills ?? [],
-            'role_type' => $target->preferences['role_type'] ?? 'both',
-            'experience' => $target->experience ?? [],
-            'education' => $target->education ?? [],
-            'remote' => true,
-            'salary_min' => 200000,
-            'locations' => ['Remote'],
+            'title' => $editee->title,
+            'summary' => $editee->summary ?? '',
+            'skills' => $editee->skills ?? [],
+            'experience' => $editee->experience ?? [],
+            'education' => $editee->education ?? [],
+            'targets' => [
+                [
+                    'id' => $existingTarget->id,
+                    'name' => 'Updated Target',
+                    'positioning' => 'Updated positioning blurb.',
+                    'target_titles' => ['Senior Engineer'],
+                    'is_active' => true,
+                    'sort_order' => 0,
+                    'remote' => true,
+                    'salary_min' => 200000,
+                    'locations' => ['Remote'],
+                    'must_have_keywords' => [],
+                    'avoid_keywords' => [],
+                ],
+            ],
             'boards' => [],
             'digest_enabled' => true,
             'digest_time' => '08:00',
@@ -77,9 +89,12 @@ it('lets admin edit a users core fields', function () {
         ])
         ->assertNotified();
 
-    $target->refresh();
-    expect($target->name)->toBe('Updated Name')
-        ->and($target->email)->toBe('new@example.com')
-        ->and($target->is_admin)->toBeTrue()
-        ->and($target->preferences['salary_min'])->toBe(200000);
+    $editee->refresh();
+    $existingTarget->refresh();
+
+    expect($editee->name)->toBe('Updated Name')
+        ->and($editee->email)->toBe('new@example.com')
+        ->and($editee->is_admin)->toBeTrue()
+        ->and($existingTarget->name)->toBe('Updated Target')
+        ->and($existingTarget->criteria['salary_min'])->toBe(200000);
 });

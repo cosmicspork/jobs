@@ -9,7 +9,9 @@ use App\Relevance;
 
 beforeEach(function () {
     $this->user = login();
+    $this->myTarget = targetFor($this->user);
     $this->otherUser = User::factory()->create();
+    $this->otherTarget = targetFor($this->otherUser);
 });
 
 it('only shows listings belonging to the authenticated user in the table', function () {
@@ -17,6 +19,7 @@ it('only shows listings belonging to the authenticated user in the table', funct
     ListingUser::create([
         'listing_id' => $myListing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->myTarget->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
     ]);
@@ -25,6 +28,7 @@ it('only shows listings belonging to the authenticated user in the table', funct
     ListingUser::create([
         'listing_id' => $otherListing->id,
         'user_id' => $this->otherUser->id,
+        'target_profile_id' => $this->otherTarget->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
     ]);
@@ -40,10 +44,12 @@ it('scopes applications to the authenticated user', function () {
     Application::factory()->create([
         'listing_id' => $listing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->myTarget->id,
     ]);
     Application::factory()->create([
         'listing_id' => $listing->id,
         'user_id' => $this->otherUser->id,
+        'target_profile_id' => $this->otherTarget->id,
     ]);
 
     expect($this->user->applications)->toHaveCount(1)
@@ -64,6 +70,7 @@ it('returns only the authenticated users pivot data for a shared listing', funct
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->myTarget->id,
         'relevance' => Relevance::Relevant,
         'starred_at' => now(),
         'scored_at' => now(),
@@ -71,6 +78,7 @@ it('returns only the authenticated users pivot data for a shared listing', funct
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->otherUser->id,
+        'target_profile_id' => $this->otherTarget->id,
         'relevance' => Relevance::Irrelevant,
         'scored_at' => now(),
     ]);
@@ -92,6 +100,7 @@ it('does not show other users starred listings', function () {
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->otherUser->id,
+        'target_profile_id' => $this->otherTarget->id,
         'starred_at' => now(),
         'scored_at' => now(),
     ]);

@@ -22,6 +22,7 @@ beforeEach(function () {
         'timezone' => 'America/Chicago',
         'digest_time' => now()->timezone('America/Chicago')->format('H:i'),
     ]);
+    $this->target = $this->user->targetProfiles()->first();
     $this->actingAs($this->user);
 });
 
@@ -30,6 +31,7 @@ it('sends the digest email', function () {
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
     ]);
@@ -71,6 +73,7 @@ it('includes only listings scored in the last 24 hours', function () {
     ListingUser::create([
         'listing_id' => $recentListing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now()->subHours(2),
     ]);
@@ -79,6 +82,7 @@ it('includes only listings scored in the last 24 hours', function () {
     ListingUser::create([
         'listing_id' => $oldListing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now()->subHours(48),
     ]);
@@ -94,16 +98,19 @@ it('includes only listings scored in the last 24 hours', function () {
 it('includes ready and failed application updates', function () {
     $readyApp = Application::factory()->ready()->create([
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'updated_at' => now()->subHours(1),
     ]);
 
     $failedApp = Application::factory()->state(['status' => ApplicationStatus::Failed])->create([
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'updated_at' => now()->subHours(1),
     ]);
 
     Application::factory()->ready()->create([
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'updated_at' => now()->subHours(48),
     ]);
 
@@ -122,6 +129,7 @@ it('includes shortlisted listings without applications', function () {
     ListingUser::create([
         'listing_id' => $shortlisted->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
         'shortlisted_at' => now(),
@@ -131,11 +139,15 @@ it('includes shortlisted listings without applications', function () {
     ListingUser::create([
         'listing_id' => $withApp->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
         'shortlisted_at' => now(),
     ]);
-    Application::factory()->for($withApp)->create(['user_id' => $this->user->id]);
+    Application::factory()->for($withApp)->create([
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+    ]);
 
     $this->artisan('digest:send')->assertSuccessful();
 

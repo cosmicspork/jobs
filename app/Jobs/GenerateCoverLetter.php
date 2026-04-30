@@ -22,14 +22,16 @@ class GenerateCoverLetter implements ShouldQueue
     {
         $listing = $this->application->listing;
         $user = $this->application->user;
+        $target = $this->application->targetProfile;
         $profile = $user->getProfileData();
 
-        $response = (new CoverLetterAgent($user))->prompt(
+        $response = (new CoverLetterAgent($user, $target))->prompt(
             "Write a cover letter for this job posting (listing_id: {$listing->id})."
         );
 
         $pdf = Pdf::loadView('cover-letter.base', [
             'profile' => $profile,
+            'target' => $target,
             'subjectLine' => $response['subject_line'],
             'body' => $response['body'],
             'listing' => $listing,

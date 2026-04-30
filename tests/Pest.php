@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\TargetProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -59,4 +60,14 @@ function login(?User $user = null): User
     test()->actingAs($user);
 
     return $user;
+}
+
+/**
+ * Create (or attach) a TargetProfile for a user. Used in tests that touch
+ * the listing_user pivot, scoring, or application generation — those all
+ * require an active target.
+ */
+function targetFor(User $user, array $overrides = []): TargetProfile
+{
+    return TargetProfile::factory()->for($user)->create($overrides);
 }

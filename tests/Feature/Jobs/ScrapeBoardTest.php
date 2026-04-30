@@ -82,6 +82,7 @@ it('updates an existing listing without changing its id and without creating new
 
 it('attaches pivots only for genuinely new listings to subscribed users', function () {
     $user = User::factory()->create();
+    targetFor($user);
     DB::table('board_user')->insert([
         'user_id' => $user->id,
         'board_key' => 'hn',
@@ -106,6 +107,27 @@ it('attaches pivots only for genuinely new listings to subscribed users', functi
         ->pluck('listings.url')
         ->all();
     expect($pivotedUrls)->toEqualCanonicalizing(['https://example.com/new1', 'https://example.com/new2']);
+});
+
+it('creates one pivot per active target per new listing', function () {
+    $user = User::factory()->create();
+    targetFor($user, ['name' => 'EM']);
+    targetFor($user, ['name' => 'IC']);
+    targetFor($user, ['name' => 'Inactive', 'is_active' => false]);
+    DB::table('board_user')->insert([
+        'user_id' => $user->id,
+        'board_key' => 'hn',
+        'created_at' => now(),
+    ]);
+
+    StubScraper::$rows = [
+        stubRow(['url' => 'https://example.com/multi-target-1']),
+    ];
+
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+
+    // 1 listing × 2 active targets = 2 pivots
+    expect(ListingUser::count())->toBe(2);
 });
 
 it('handles an empty scrape gracefully', function () {

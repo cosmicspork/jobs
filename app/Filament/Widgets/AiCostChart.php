@@ -18,7 +18,7 @@ class AiCostChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->is_admin ?? false;
+        return auth()->user()->is_admin;
     }
 
     protected function getData(): array

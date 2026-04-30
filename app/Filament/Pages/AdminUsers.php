@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Mail\WelcomeUser;
+use App\Models\TargetProfile;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -18,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -49,7 +51,7 @@ class AdminUsers extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->is_admin ?? false;
+        return auth()->user()->is_admin;
     }
 
     public function table(Table $table): Table
@@ -125,14 +127,23 @@ class AdminUsers extends Page implements HasTable
                 'is_admin' => $record->is_admin,
                 'title' => $record->title,
                 'experience_years' => $record->experience_years,
-                'role_type' => $record->preferences['role_type'] ?? 'both',
                 'summary' => $record->summary,
                 'skills' => $record->skills ?? [],
                 'experience' => $record->experience ?? [],
                 'education' => $record->education ?? [],
-                'remote' => $record->preferences['remote'] ?? true,
-                'salary_min' => $record->preferences['salary_min'] ?? null,
-                'locations' => $record->preferences['locations'] ?? [],
+                'targets' => $record->targetProfiles->map(fn (TargetProfile $t) => [
+                    'id' => $t->id,
+                    'name' => $t->name,
+                    'is_active' => $t->is_active,
+                    'positioning' => $t->positioning,
+                    'target_titles' => $t->target_titles ?? [],
+                    'remote' => $t->criterion('remote'),
+                    'salary_min' => $t->criterion('salary_min'),
+                    'locations' => $t->criterion('locations', []),
+                    'must_have_keywords' => $t->criterion('must_have_keywords', []),
+                    'avoid_keywords' => $t->criterion('avoid_keywords', []),
+                    'sort_order' => $t->sort_order,
+                ])->all(),
                 'boards' => $record->subscribedBoardKeys(),
                 'digest_enabled' => $record->digest_enabled,
                 'digest_time' => $record->digest_time,
@@ -149,15 +160,8 @@ class AdminUsers extends Page implements HasTable
                 Section::make('About')
                     ->columns(6)
                     ->schema([
-                        TextInput::make('title')->columnSpan(3),
-                        TextInput::make('experience_years')->columnSpan(1),
-                        Select::make('role_type')
-                            ->options([
-                                'em' => 'Management',
-                                'ic' => 'IC',
-                                'both' => 'Both',
-                            ])
-                            ->columnSpan(2),
+                        TextInput::make('title')->columnSpan(4),
+                        TextInput::make('experience_years')->columnSpan(2),
                         Textarea::make('summary')->rows(3)->columnSpanFull(),
                     ]),
                 Section::make('Skills')
@@ -174,15 +178,32 @@ class AdminUsers extends Page implements HasTable
                                 TagsInput::make('highlights'),
                             ])
                             ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
+                            ->itemLabel(fn (array $state): string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
                         TagsInput::make('education'),
                     ]),
-                Section::make('Preferences')
-                    ->columns(3)
+                Section::make('Targets')
                     ->schema([
-                        Toggle::make('remote')->label('Remote Only'),
-                        TextInput::make('salary_min')->numeric()->prefix('$'),
-                        TagsInput::make('locations'),
+                        Repeater::make('targets')
+                            ->schema([
+                                Grid::make(6)->schema([
+                                    TextInput::make('name')->required()->columnSpan(4),
+                                    Toggle::make('is_active')->label('Active')->default(true)->columnSpan(1),
+                                    TextInput::make('sort_order')->label('Order')->numeric()->default(0)->columnSpan(1),
+                                ]),
+                                Textarea::make('positioning')->rows(3)->required(),
+                                TagsInput::make('target_titles')->required(),
+                                Grid::make(3)->schema([
+                                    Toggle::make('remote')->label('Remote required')->default(true),
+                                    TextInput::make('salary_min')->numeric()->prefix('$'),
+                                    TagsInput::make('locations'),
+                                ]),
+                                Grid::make(2)->schema([
+                                    TagsInput::make('must_have_keywords')->label('Must-have keywords'),
+                                    TagsInput::make('avoid_keywords')->label('Avoid keywords'),
+                                ]),
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): string => $state['name'] ?? ''),
                     ]),
                 Section::make('Notifications')
                     ->columns(6)
@@ -209,21 +230,57 @@ class AdminUsers extends Page implements HasTable
                     'skills' => $data['skills'] ?? [],
                     'experience' => $data['experience'] ?? [],
                     'education' => $data['education'] ?? [],
-                    'preferences' => [
-                        'remote' => $data['remote'] ?? true,
-                        'salary_min' => $data['salary_min'] ? (int) $data['salary_min'] : null,
-                        'locations' => $data['locations'] ?? [],
-                        'role_type' => $data['role_type'] ?? 'both',
-                    ],
                     'digest_enabled' => $data['digest_enabled'] ?? true,
                     'digest_time' => $data['digest_time'] ?? '08:00',
                     'timezone' => $data['timezone'] ?? 'America/Chicago',
                 ]);
 
+                $this->syncTargets($record, $data['targets'] ?? []);
+
                 $record->syncSubscribedBoards($data['boards'] ?? []);
 
                 Notification::make()->title('User updated')->success()->send();
             });
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function syncTargets(User $user, array $rows): void
+    {
+        $keptIds = [];
+
+        foreach ($rows as $row) {
+            $attrs = [
+                'name' => $row['name'],
+                'positioning' => $row['positioning'] ?? null,
+                'target_titles' => $row['target_titles'] ?? [],
+                'criteria' => [
+                    'remote' => $row['remote'] ?? false,
+                    'salary_min' => isset($row['salary_min']) && $row['salary_min'] !== '' ? (int) $row['salary_min'] : null,
+                    'locations' => $row['locations'] ?? [],
+                    'must_have_keywords' => $row['must_have_keywords'] ?? [],
+                    'avoid_keywords' => $row['avoid_keywords'] ?? [],
+                ],
+                'is_active' => (bool) ($row['is_active'] ?? true),
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+
+            if (! empty($row['id'])) {
+                $target = $user->targetProfiles()->where('id', $row['id'])->first();
+                if ($target) {
+                    $target->update($attrs);
+                    $keptIds[] = $target->id;
+
+                    continue;
+                }
+            }
+
+            $created = $user->targetProfiles()->create($attrs);
+            $keptIds[] = $created->id;
+        }
+
+        $user->targetProfiles()->whereNotIn('id', $keptIds)->delete();
     }
 
     protected function sendPasswordResetAction(): Action

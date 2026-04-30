@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string|null $title
+ * @property string|null $summary
+ * @property array<int, string>|null $skills
+ * @property array<int, array<string, mixed>>|null $experience
+ * @property array<int, string>|null $education
+ * @property string|null $experience_years
+ * @property array<string, mixed>|null $preferences
+ * @property array<string, string>|null $prompts
+ * @property bool $is_admin
+ * @property bool $digest_enabled
+ * @property string $digest_time
+ * @property string $timezone
+ */
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
@@ -41,7 +59,7 @@ class User extends Authenticatable implements FilamentUser
     ];
 
     /**
-     * @return BelongsToMany<Listing, $this>
+     * @return BelongsToMany<Listing, $this, ListingUser, 'pivot'>
      */
     public function listings(): BelongsToMany
     {
@@ -60,6 +78,50 @@ class User extends Authenticatable implements FilamentUser
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
+    }
+
+    /**
+     * @return HasMany<TargetProfile, $this>
+     */
+    public function targetProfiles(): HasMany
+    {
+        return $this->hasMany(TargetProfile::class)->orderBy('sort_order');
+    }
+
+    /**
+     * @return Collection<int, TargetProfile>
+     */
+    public function activeTargets(): Collection
+    {
+        return $this->targetProfiles()->where('is_active', true)->get();
+    }
+
+    /**
+     * Pick the best-fit target for a given listing — the active target whose pivot has
+     * the highest relevance score. Falls back to the first active target if nothing scored.
+     */
+    public function bestTargetFor(Listing $listing): ?TargetProfile
+    {
+        $relevanceOrder = ['relevant' => 0, 'maybe' => 1, 'irrelevant' => 2];
+
+        $scored = ListingUser::query()
+            ->where('listing_id', $listing->id)
+            ->where('user_id', $this->id)
+            ->whereNotNull('relevance')
+            ->with('targetProfile')
+            ->get()
+            ->filter(fn (ListingUser $pivot) => $pivot->targetProfile?->is_active)
+            ->sortBy([
+                fn ($a, $b) => ($relevanceOrder[$a->relevance->value] ?? 99) <=> ($relevanceOrder[$b->relevance->value] ?? 99),
+                fn ($a, $b) => ($b->scored_at <=> $a->scored_at),
+            ])
+            ->first();
+
+        if ($scored) {
+            return $scored->targetProfile;
+        }
+
+        return $this->activeTargets()->first();
     }
 
     /**
@@ -94,8 +156,6 @@ class User extends Authenticatable implements FilamentUser
             'experience' => $this->experience ?? [],
             'education' => $this->education ?? [],
             'experience_years' => $this->experience_years,
-            'preferences' => $this->preferences ?? [],
-            'role_type' => $this->preferences['role_type'] ?? 'both',
         ];
     }
 
@@ -178,10 +238,16 @@ class User extends Authenticatable implements FilamentUser
      */
     public function hasMinimumProfile(): bool
     {
-        return ! empty($this->title)
-            && ! empty($this->summary)
-            && ! empty($this->skills)
-            && isset($this->preferences['remote']);
+        if (empty($this->title) || empty($this->summary) || empty($this->skills)) {
+            return false;
+        }
+
+        return $this->targetProfiles()
+            ->where('is_active', true)
+            ->whereNotNull('positioning')
+            ->get()
+            ->contains(fn (TargetProfile $target) => ! empty($target->target_titles)
+                && isset($target->criteria['remote']));
     }
 
     /**

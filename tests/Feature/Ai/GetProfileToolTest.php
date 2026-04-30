@@ -1,10 +1,11 @@
 <?php
 
 use App\Ai\Tools\GetProfile;
+use App\Ai\Tools\GetTargetProfile;
 use App\Models\User;
 use Laravel\Ai\Tools\Request;
 
-it('returns the profile data as json', function () {
+it('returns the candidate identity as json', function () {
     $user = User::factory()->create([
         'name' => 'Test User',
         'title' => 'Senior Engineer',
@@ -13,7 +14,6 @@ it('returns the profile data as json', function () {
         'experience' => [['role' => 'Dev', 'company' => 'TestCo']],
         'education' => ['BS CS'],
         'experience_years' => '9+',
-        'preferences' => ['salary_min' => 120000, 'role_type' => 'em'],
         'prompts' => ['scorer' => 'Score this job'],
     ]);
 
@@ -27,10 +27,11 @@ it('returns the profile data as json', function () {
         ->and($data['title'])->toBe('Senior Engineer')
         ->and($data['summary'])->toBe('A clear summary.')
         ->and($data['skills'])->toBeArray()->not->toBeEmpty()
-        ->and($data['role_type'])->toBe('em');
+        ->and($data)->not->toHaveKey('role_type')
+        ->and($data)->not->toHaveKey('preferences');
 });
 
-it('excludes prompts from the output', function () {
+it('excludes prompts and preferences from the output', function () {
     $user = User::factory()->create([
         'prompts' => ['scorer' => 'Score this job'],
     ]);
@@ -40,5 +41,24 @@ it('excludes prompts from the output', function () {
 
     $data = json_decode($result, true);
 
-    expect($data)->not->toHaveKey('prompts');
+    expect($data)->not->toHaveKey('prompts')
+        ->and($data)->not->toHaveKey('preferences');
+});
+
+it('GetTargetProfile returns the target name, positioning, titles, and criteria', function () {
+    $user = User::factory()->create();
+    $target = targetFor($user, [
+        'name' => 'Engineering Management',
+        'positioning' => 'Looking for EM roles at Series B-D companies.',
+        'target_titles' => ['Engineering Manager', 'Director'],
+        'criteria' => ['remote' => true, 'salary_min' => 220000, 'locations' => []],
+    ]);
+
+    $tool = new GetTargetProfile($target);
+    $data = json_decode($tool->handle(new Request([])), true);
+
+    expect($data['name'])->toBe('Engineering Management')
+        ->and($data['positioning'])->toBe('Looking for EM roles at Series B-D companies.')
+        ->and($data['target_titles'])->toContain('Engineering Manager')
+        ->and($data['criteria']['remote'])->toBeTrue();
 });

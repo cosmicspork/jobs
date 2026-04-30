@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\TargetProfile;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -16,6 +17,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -47,14 +49,23 @@ class Profile extends Page
             'email' => $user->email,
             'title' => $user->title,
             'experience_years' => $user->experience_years,
-            'role_type' => $user->preferences['role_type'] ?? 'both',
             'summary' => $user->summary,
             'skills' => $user->skills ?? [],
             'experience' => $user->experience ?? [],
             'education' => $user->education ?? [],
-            'remote' => $user->preferences['remote'] ?? true,
-            'salary_min' => $user->preferences['salary_min'] ?? null,
-            'locations' => $user->preferences['locations'] ?? [],
+            'targets' => $user->targetProfiles->map(fn (TargetProfile $t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'is_active' => $t->is_active,
+                'positioning' => $t->positioning,
+                'target_titles' => $t->target_titles ?? [],
+                'remote' => $t->criterion('remote'),
+                'salary_min' => $t->criterion('salary_min'),
+                'locations' => $t->criterion('locations', []),
+                'must_have_keywords' => $t->criterion('must_have_keywords', []),
+                'avoid_keywords' => $t->criterion('avoid_keywords', []),
+                'sort_order' => $t->sort_order,
+            ])->all(),
             'boards' => $user->subscribedBoardKeys(),
             'digest_enabled' => $user->digest_enabled,
             'digest_time' => $user->digest_time,
@@ -68,7 +79,7 @@ class Profile extends Page
             ->components([
                 Form::make([
                     Section::make('About you')
-                        ->description('Used for scoring job listings and tailoring resumes.')
+                        ->description('Your career identity. Used by every agent as the candidate baseline.')
                         ->columns(6)
                         ->schema([
                             TextInput::make('name')
@@ -81,37 +92,27 @@ class Profile extends Page
                             TextInput::make('title')
                                 ->placeholder('e.g. Senior Software Engineer')
                                 ->required()
-                                ->columnSpan(3),
+                                ->columnSpan(4),
                             TextInput::make('experience_years')
                                 ->label('Years of experience')
                                 ->placeholder('e.g. 9+')
-                                ->columnSpan(1),
-                            Select::make('role_type')
-                                ->label('Looking for')
-                                ->options([
-                                    'em' => 'Management roles',
-                                    'ic' => 'Individual contributor roles',
-                                    'both' => 'Both — open to either',
-                                ])
-                                ->default('both')
-                                ->required()
                                 ->columnSpan(2),
                             Textarea::make('summary')
-                                ->label('Professional summary')
-                                ->helperText("2-3 sentences on who you are and what you're looking for. Used by the resume and cover letter agents.")
+                                ->label('Career summary')
+                                ->helperText('2-3 sentences on who you are. Per-target framing lives in each target below.')
                                 ->rows(4)
                                 ->required()
                                 ->columnSpanFull(),
                         ]),
                     Section::make('Skills')
-                        ->description('Technical and leadership skills — one flat list. The scoring agent uses this to match you to listings.')
+                        ->description('Technical and leadership skills — one flat list. Each target picks the most relevant subset at scoring/tailoring time.')
                         ->schema([
                             TagsInput::make('skills')
                                 ->placeholder('Add a skill — Laravel, Kubernetes, Mentorship, etc.')
                                 ->required(),
                         ]),
                     Section::make('Experience & education')
-                        ->description('Optional. Resume tailoring works better with structured experience, but you can skip for now.')
+                        ->description('Optional but recommended. Resume tailoring works better with structured experience.')
                         ->collapsible()
                         ->collapsed(fn (): bool => empty(auth()->user()->experience) && empty(auth()->user()->education))
                         ->schema([
@@ -125,20 +126,63 @@ class Profile extends Page
                                 ])
                                 ->addActionLabel('Add role')
                                 ->collapsible()
-                                ->itemLabel(fn (array $state): ?string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
+                                ->itemLabel(fn (array $state): string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
                             TagsInput::make('education')
                                 ->placeholder('e.g. B.S. Computer Science, University X'),
                         ]),
-                    Section::make('Job preferences')
-                        ->columns(3)
+                    Section::make('Targets')
+                        ->description('What roles you\'re hunting for. Each target is scored independently against every listing — add one per role type you\'re open to.')
                         ->schema([
-                            Toggle::make('remote')->label('Remote only'),
-                            TextInput::make('salary_min')
-                                ->label('Minimum salary')
-                                ->numeric()
-                                ->prefix('$'),
-                            TagsInput::make('locations')
-                                ->placeholder('Add location'),
+                            Repeater::make('targets')
+                                ->label('Target profiles')
+                                ->schema([
+                                    Grid::make(6)->schema([
+                                        TextInput::make('name')
+                                            ->placeholder('e.g. Engineering Manager roles')
+                                            ->required()
+                                            ->columnSpan(4),
+                                        Toggle::make('is_active')
+                                            ->label('Active')
+                                            ->default(true)
+                                            ->columnSpan(1),
+                                        TextInput::make('sort_order')
+                                            ->label('Order')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->columnSpan(1),
+                                    ]),
+                                    Textarea::make('positioning')
+                                        ->label('Positioning')
+                                        ->helperText('2-3 sentences: what role you\'re aiming for and why. The agents use this to frame summaries, cover letters, and answers.')
+                                        ->rows(3)
+                                        ->required(),
+                                    TagsInput::make('target_titles')
+                                        ->label('Target titles')
+                                        ->placeholder('Engineering Manager, Director of Engineering, Head of Engineering')
+                                        ->helperText('Job titles that count as a match for this target.')
+                                        ->required(),
+                                    Grid::make(3)->schema([
+                                        Toggle::make('remote')->label('Remote required')->default(true),
+                                        TextInput::make('salary_min')
+                                            ->label('Minimum salary')
+                                            ->numeric()
+                                            ->prefix('$'),
+                                        TagsInput::make('locations')
+                                            ->placeholder('Remote, Austin TX, …'),
+                                    ]),
+                                    Grid::make(2)->schema([
+                                        TagsInput::make('must_have_keywords')
+                                            ->label('Must-have keywords')
+                                            ->helperText('Listings missing all of these are marked irrelevant.'),
+                                        TagsInput::make('avoid_keywords')
+                                            ->label('Avoid keywords')
+                                            ->helperText('Listings featuring these prominently are marked irrelevant.'),
+                                    ]),
+                                ])
+                                ->addActionLabel('Add target')
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): string => $state['name'] ?? '')
+                                ->minItems(1),
                         ]),
                     Section::make('Notifications')
                         ->description('Pick which boards to pull from and whether to get a daily digest email.')
@@ -154,7 +198,7 @@ class Profile extends Page
                                 ->label('Daily digest email')
                                 ->helperText(fn (): ?string => auth()->user()->hasMinimumProfile()
                                     ? null
-                                    : 'Finish your profile (title, summary, skills, remote preference) before enabling — scoring is paused until then, so the digest would be empty.')
+                                    : 'Finish your profile (title, summary, skills, and at least one active target with positioning, target titles, and a remote preference) before enabling — scoring is paused until then, so the digest would be empty.')
                                 ->disabled(fn (): bool => ! auth()->user()->hasMinimumProfile())
                                 ->saved()
                                 ->columnSpan(2),
@@ -186,6 +230,7 @@ class Profile extends Page
     public function save(): void
     {
         $data = $this->form->getState();
+        /** @var User $user */
         $user = auth()->user();
 
         $user->update([
@@ -197,16 +242,12 @@ class Profile extends Page
             'skills' => $data['skills'] ?? [],
             'experience' => $data['experience'] ?? [],
             'education' => $data['education'] ?? [],
-            'preferences' => [
-                'remote' => $data['remote'] ?? true,
-                'salary_min' => $data['salary_min'] ? (int) $data['salary_min'] : null,
-                'locations' => $data['locations'] ?? [],
-                'role_type' => $data['role_type'] ?? 'both',
-            ],
             'digest_enabled' => $data['digest_enabled'] ?? true,
             'digest_time' => $data['digest_time'] ?? '08:00',
             'timezone' => $data['timezone'] ?? 'America/Chicago',
         ]);
+
+        $this->syncTargets($user, $data['targets'] ?? []);
 
         $user->syncSubscribedBoards($data['boards'] ?? []);
 
@@ -214,5 +255,45 @@ class Profile extends Page
             ->title('Profile saved')
             ->success()
             ->send();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function syncTargets(User $user, array $rows): void
+    {
+        $keptIds = [];
+
+        foreach ($rows as $row) {
+            $attrs = [
+                'name' => $row['name'],
+                'positioning' => $row['positioning'] ?? null,
+                'target_titles' => $row['target_titles'] ?? [],
+                'criteria' => [
+                    'remote' => $row['remote'] ?? false,
+                    'salary_min' => isset($row['salary_min']) && $row['salary_min'] !== '' ? (int) $row['salary_min'] : null,
+                    'locations' => $row['locations'] ?? [],
+                    'must_have_keywords' => $row['must_have_keywords'] ?? [],
+                    'avoid_keywords' => $row['avoid_keywords'] ?? [],
+                ],
+                'is_active' => (bool) ($row['is_active'] ?? true),
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+
+            if (! empty($row['id'])) {
+                $target = $user->targetProfiles()->where('id', $row['id'])->first();
+                if ($target) {
+                    $target->update($attrs);
+                    $keptIds[] = $target->id;
+
+                    continue;
+                }
+            }
+
+            $created = $user->targetProfiles()->create($attrs);
+            $keptIds[] = $created->id;
+        }
+
+        $user->targetProfiles()->whereNotIn('id', $keptIds)->delete();
     }
 }

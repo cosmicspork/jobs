@@ -13,7 +13,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Bus;
 
-/** @property User $user */
+/**
+ * @property User $user
+ * @property TargetProfile $targetProfile
+ */
 class Application extends Model
 {
     /** @use HasFactory<ApplicationFactory> */
@@ -22,6 +25,7 @@ class Application extends Model
     protected $fillable = [
         'listing_id',
         'user_id',
+        'target_profile_id',
         'status',
         'resume_path',
         'cover_letter_path',
@@ -44,23 +48,31 @@ class Application extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function generateResume(Listing $listing, User $user): static
+    /**
+     * @return BelongsTo<TargetProfile, $this>
+     */
+    public function targetProfile(): BelongsTo
     {
-        return static::dispatchGeneration($listing, $user, fn ($app) => [
+        return $this->belongsTo(TargetProfile::class);
+    }
+
+    public static function generateResume(Listing $listing, User $user, TargetProfile $target): static
+    {
+        return static::dispatchGeneration($listing, $user, $target, fn ($app) => [
             new GenerateResume($app),
         ]);
     }
 
-    public static function generateCoverLetter(Listing $listing, User $user): static
+    public static function generateCoverLetter(Listing $listing, User $user, TargetProfile $target): static
     {
-        return static::dispatchGeneration($listing, $user, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, $target, fn ($app) => [
             new GenerateCoverLetter($app),
         ]);
     }
 
-    public static function generateBoth(Listing $listing, User $user): static
+    public static function generateBoth(Listing $listing, User $user, TargetProfile $target): static
     {
-        return static::dispatchGeneration($listing, $user, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, $target, fn ($app) => [
             new GenerateResume($app),
             new GenerateCoverLetter($app),
         ]);
@@ -80,11 +92,15 @@ class Application extends Model
     /**
      * @param  callable(self): array<ShouldQueue>  $jobs
      */
-    protected static function dispatchGeneration(Listing $listing, User $user, callable $jobs): static
+    protected static function dispatchGeneration(Listing $listing, User $user, TargetProfile $target, callable $jobs): static
     {
         /** @var static $application */
         $application = static::firstOrCreate(
-            ['listing_id' => $listing->id, 'user_id' => $user->id],
+            [
+                'listing_id' => $listing->id,
+                'user_id' => $user->id,
+                'target_profile_id' => $target->id,
+            ],
             ['status' => ApplicationStatus::Generating],
         );
 

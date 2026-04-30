@@ -4,6 +4,8 @@ namespace App\Ai\Agents;
 
 use App\Ai\Tools\GetJobPosting;
 use App\Ai\Tools\GetProfile;
+use App\Ai\Tools\GetTargetProfile;
+use App\Models\TargetProfile;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
@@ -23,7 +25,7 @@ class ApplicationQuestionsAgent implements Agent, HasStructuredOutput, HasTools
 {
     use Promptable;
 
-    public function __construct(public User $user) {}
+    public function __construct(public User $user, public TargetProfile $target) {}
 
     public function instructions(): Stringable|string
     {
@@ -37,6 +39,7 @@ class ApplicationQuestionsAgent implements Agent, HasStructuredOutput, HasTools
     {
         return [
             new GetProfile($this->user),
+            new GetTargetProfile($this->target),
             new GetJobPosting,
         ];
     }

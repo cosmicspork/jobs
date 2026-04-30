@@ -22,14 +22,16 @@ class GenerateResume implements ShouldQueue
     {
         $listing = $this->application->listing;
         $user = $this->application->user;
+        $target = $this->application->targetProfile;
         $profile = $user->getProfileData();
 
-        $response = (new ResumeTailorAgent($user))->prompt(
+        $response = (new ResumeTailorAgent($user, $target))->prompt(
             "Tailor my resume for this job posting (listing_id: {$listing->id})."
         );
 
         $pdf = Pdf::loadView('resume.base', [
             'profile' => $profile,
+            'target' => $target,
             'summary' => $response['summary'],
             'skills' => $response['skills'],
             'experience' => $response['experience'],

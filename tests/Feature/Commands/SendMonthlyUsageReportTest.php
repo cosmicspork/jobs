@@ -12,6 +12,7 @@ it('emails users a usage report covering the previous month and skips silent use
     Mail::fake();
 
     $active = User::factory()->create();
+    $activeTarget = targetFor($active);
     $silent = User::factory()->create();
 
     $lastMonth = now()->subMonthNoOverflow();
@@ -26,6 +27,7 @@ it('emails users a usage report covering the previous month and skips silent use
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $active->id,
+        'target_profile_id' => $activeTarget->id,
         'relevance' => Relevance::Relevant,
         'created_at' => $lastMonth,
         'updated_at' => $lastMonth,

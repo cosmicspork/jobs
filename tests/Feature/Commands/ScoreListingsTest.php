@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->user = login(User::factory()->ic()->create());
+    $this->target = $this->user->targetProfiles()->first();
 });
 
 it('dispatches scoring jobs for unscored listing-user pairs', function () {
@@ -23,6 +24,7 @@ it('dispatches scoring jobs for unscored listing-user pairs', function () {
         ListingUser::create([
             'listing_id' => $listing->id,
             'user_id' => $this->user->id,
+            'target_profile_id' => $this->target->id,
         ]);
     }
 
@@ -39,6 +41,7 @@ it('skips already scored listing-user pairs', function () {
     ListingUser::create([
         'listing_id' => $scoredListing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
     ]);
@@ -47,6 +50,7 @@ it('skips already scored listing-user pairs', function () {
     ListingUser::create([
         'listing_id' => $unscoredListing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
     ]);
 
     $this->artisan('jobs:score')
@@ -66,11 +70,15 @@ it('skips users whose profiles are incomplete and logs a warning', function () {
     Queue::fake();
     Log::spy();
 
+    // User has a target but is missing identity (no title/summary/skills) → incomplete.
     $bareUser = User::factory()->create();
+    $bareTarget = targetFor($bareUser);
+
     $listing = Listing::factory()->create(['remote' => true, 'salary_max' => null]);
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $bareUser->id,
+        'target_profile_id' => $bareTarget->id,
     ]);
 
     $this->artisan('jobs:score')->assertSuccessful();
@@ -82,21 +90,40 @@ it('skips users whose profiles are incomplete and logs a warning', function () {
             && $context['user_id'] === $bareUser->id);
 });
 
+it('skips pivots whose target is inactive', function () {
+    Queue::fake();
+
+    $inactiveTarget = targetFor($this->user, ['is_active' => false]);
+
+    $listing = Listing::factory()->create(['remote' => true, 'salary_max' => null]);
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $inactiveTarget->id,
+    ]);
+
+    $this->artisan('jobs:score')->assertSuccessful();
+
+    Queue::assertNothingPushed();
+});
+
 it('marks heuristically-filtered listings as irrelevant without dispatching scoring', function () {
     Queue::fake();
 
-    // user wants remote; listing is not remote
+    // target wants remote; listing is not remote
     $notRemote = Listing::factory()->create(['remote' => false, 'salary_max' => null]);
     ListingUser::create([
         'listing_id' => $notRemote->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
     ]);
 
-    // user min is 175k; listing maxes out below
+    // target min is 175k; listing maxes out below
     $lowSalary = Listing::factory()->create(['remote' => true, 'salary_max' => 100000]);
     ListingUser::create([
         'listing_id' => $lowSalary->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
     ]);
 
     $this->artisan('jobs:score')->assertSuccessful();
@@ -127,6 +154,7 @@ it('skips dispatch and emails admin when user has hit the monthly AI cap', funct
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
     ]);
 
     $this->artisan('jobs:score')->assertSuccessful();

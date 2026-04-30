@@ -43,11 +43,17 @@ class ProfileCompletionChecklist extends Widget
 
         $user = auth()->user();
 
+        $hasReadyTarget = $user->targetProfiles()
+            ->where('is_active', true)
+            ->whereNotNull('positioning')
+            ->get()
+            ->contains(fn ($t) => ! empty($t->target_titles) && isset($t->criteria['remote']));
+
         return $this->items = [
             ['label' => 'Job title', 'done' => ! empty($user->title)],
             ['label' => 'Summary', 'done' => ! empty($user->summary)],
             ['label' => 'Skills', 'done' => ! empty($user->skills)],
-            ['label' => 'Remote preference', 'done' => isset($user->preferences['remote'])],
+            ['label' => 'At least one active target', 'done' => $hasReadyTarget],
         ];
     }
 

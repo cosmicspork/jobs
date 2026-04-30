@@ -41,8 +41,8 @@ class LogAiUsage
 
         $inputCost = ($usage->promptTokens / 1_000_000) * $pricing['input'];
         $outputCost = ($usage->completionTokens / 1_000_000) * $pricing['output'];
-        $cacheWriteCost = (($usage->cacheWriteInputTokens ?? 0) / 1_000_000) * $pricing['cacheWrite'];
-        $cacheReadCost = (($usage->cacheReadInputTokens ?? 0) / 1_000_000) * $pricing['cacheRead'];
+        $cacheWriteCost = ($usage->cacheWriteInputTokens / 1_000_000) * $pricing['cacheWrite'];
+        $cacheReadCost = ($usage->cacheReadInputTokens / 1_000_000) * $pricing['cacheRead'];
 
         return $inputCost + $outputCost + $cacheWriteCost + $cacheReadCost;
     }

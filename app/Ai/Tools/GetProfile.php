@@ -14,7 +14,7 @@ class GetProfile implements Tool
 
     public function description(): Stringable|string
     {
-        return 'Returns the candidate profile including skills, experience, and job preferences.';
+        return 'Returns the candidate identity: name, title, summary, skills, experience, and education. Pair this with GetTargetProfile for the role-specific positioning and criteria.';
     }
 
     public function handle(Request $request): Stringable|string

@@ -18,7 +18,7 @@ class ScrapeHealth extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->is_admin ?? false;
+        return auth()->user()->is_admin;
     }
 
     protected function getStats(): array
@@ -30,7 +30,6 @@ class ScrapeHealth extends StatsOverviewWidget
         $weekStart = now()->startOfWeek();
         $sevenDays = now()->subDays(7);
 
-        /** @var array<int, object{board: string, last_scraped: string|null, today: int, this_week: int, last_7d: int}> $rows */
         $rows = Listing::query()
             ->selectRaw('board')
             ->selectRaw('MAX(scraped_at) as last_scraped')
@@ -44,6 +43,7 @@ class ScrapeHealth extends StatsOverviewWidget
         $stats = [];
 
         foreach ($boards as $key => $meta) {
+            /** @var object{last_scraped: string|null, today: int, this_week: int, last_7d: int}|null $row */
             $row = $rows->get($key);
             $lastScraped = $row?->last_scraped ? Carbon::parse($row->last_scraped) : null;
             $minutesSince = $lastScraped?->diffInMinutes(now()) ?? null;
@@ -54,7 +54,7 @@ class ScrapeHealth extends StatsOverviewWidget
                 ? $lastScraped->diffForHumans(syntax: Carbon::DIFF_RELATIVE_TO_NOW, short: true)
                 : 'never';
 
-            $stats[] = Stat::make($meta['name'] ?? $key, $value)
+            $stats[] = Stat::make($meta['name'], $value)
                 ->description(sprintf(
                     '+%d today · +%d this week · +%d last 7d',
                     (int) ($row->today ?? 0),

@@ -37,10 +37,12 @@ it('hides the completion checklist once the minimum profile is met', function ()
 
 it('displays listing stats', function () {
     $user = login();
+    $target = targetFor($user);
 
     Listing::factory(3)->create()->each(fn (Listing $listing) => ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $user->id,
+        'target_profile_id' => $target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
     ]));
@@ -48,6 +50,7 @@ it('displays listing stats', function () {
     Listing::factory(2)->create()->each(fn (Listing $listing) => ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $user->id,
+        'target_profile_id' => $target->id,
     ]));
 
     Livewire::test(ListingStats::class)

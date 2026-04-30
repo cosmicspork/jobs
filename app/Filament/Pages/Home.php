@@ -16,6 +16,9 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Mail;
 
+/**
+ * @property-read Schema $form
+ */
 class Home extends Page
 {
     protected string $view = 'filament.pages.home';

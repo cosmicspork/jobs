@@ -86,20 +86,28 @@ class ScrapeBoard implements ShouldQueue
                 ->all();
 
             if ($userIds !== []) {
-                $pivots = [];
-                foreach ($newListingIds as $listingId) {
-                    foreach ($userIds as $userId) {
-                        $pivots[] = [
-                            'id' => (string) Str::ulid(),
-                            'listing_id' => $listingId,
-                            'user_id' => $userId,
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
-                    }
-                }
+                $targets = DB::table('target_profiles')
+                    ->whereIn('user_id', $userIds)
+                    ->where('is_active', true)
+                    ->get(['id', 'user_id']);
 
-                DB::table('listing_user')->insert($pivots);
+                if ($targets->isNotEmpty()) {
+                    $pivots = [];
+                    foreach ($newListingIds as $listingId) {
+                        foreach ($targets as $target) {
+                            $pivots[] = [
+                                'id' => (string) Str::ulid(),
+                                'listing_id' => $listingId,
+                                'user_id' => $target->user_id,
+                                'target_profile_id' => $target->id,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+                    }
+
+                    DB::table('listing_user')->insert($pivots);
+                }
             }
         }
 

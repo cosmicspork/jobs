@@ -31,11 +31,11 @@ class ScoreListings extends Command
         /** @var array<int, User> $cappedUsers */
         $cappedUsers = [];
 
-        $counts = ['dispatched' => 0, 'filtered' => 0, 'skippedIncomplete' => 0, 'skippedCap' => 0];
+        $counts = ['dispatched' => 0, 'filtered' => 0, 'skippedIncomplete' => 0, 'skippedCap' => 0, 'skippedInactiveTarget' => 0];
 
         ListingUser::query()
             ->whereNull('scored_at')
-            ->with(['listing', 'user'])
+            ->with(['listing', 'user', 'targetProfile'])
             ->chunkById(100, function ($pivots) use (&$counts, &$spendByUser, &$cappedUsers, $filter, $cap, $monthStart) {
                 foreach ($pivots as $pivot) {
                     $this->processPivot($pivot, $filter, $cap, $monthStart, $counts, $spendByUser, $cappedUsers);
@@ -53,8 +53,8 @@ class ScoreListings extends Command
         }
 
         $this->info(sprintf(
-            'Dispatched: %d | Filtered: %d | Skipped (incomplete profile): %d | Skipped (cap): %d',
-            $counts['dispatched'], $counts['filtered'], $counts['skippedIncomplete'], $counts['skippedCap']
+            'Dispatched: %d | Filtered: %d | Skipped (incomplete profile): %d | Skipped (inactive target): %d | Skipped (cap): %d',
+            $counts['dispatched'], $counts['filtered'], $counts['skippedIncomplete'], $counts['skippedInactiveTarget'], $counts['skippedCap']
         ));
 
         return self::SUCCESS;
@@ -75,6 +75,13 @@ class ScoreListings extends Command
         array &$cappedUsers,
     ): void {
         $user = $pivot->user;
+        $target = $pivot->targetProfile;
+
+        if ($user === null || ! $target?->is_active) {
+            $counts['skippedInactiveTarget']++;
+
+            return;
+        }
 
         if (! $user->hasMinimumProfile()) {
             $counts['skippedIncomplete']++;
@@ -100,7 +107,7 @@ class ScoreListings extends Command
             return;
         }
 
-        if ($reason = $filter->reasonToSkip($pivot->listing, $user)) {
+        if ($reason = $filter->reasonToSkip($pivot->listing, $target)) {
             $pivot->update([
                 'relevance' => Relevance::Irrelevant,
                 'score_data' => ['filtered' => true, 'filter_reason' => $reason->value],
@@ -111,7 +118,7 @@ class ScoreListings extends Command
             return;
         }
 
-        ScoreListing::dispatch($pivot->listing, $user);
+        ScoreListing::dispatch($pivot->listing, $target);
         $counts['dispatched']++;
     }
 

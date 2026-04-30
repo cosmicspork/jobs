@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Listings\Tables;
 use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Models\Listing;
 use App\Models\ListingUser;
+use App\Models\TargetProfile;
 use App\Relevance;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -15,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ListingsTable
 {
@@ -24,11 +26,21 @@ class ListingsTable
             ->modifyQueryUsing(function ($query) {
                 $userId = auth()->id();
 
+                $bestPivotId = DB::table('listing_user as inner_lu')
+                    ->select('inner_lu.id')
+                    ->whereColumn('inner_lu.listing_id', 'listings.id')
+                    ->where('inner_lu.user_id', $userId)
+                    ->orderByRaw("CASE inner_lu.relevance WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END")
+                    ->orderByDesc('inner_lu.scored_at')
+                    ->limit(1);
+
                 return $query
-                    ->join('listing_user', function ($join) use ($userId) {
+                    ->join('listing_user', function ($join) use ($userId, $bestPivotId) {
                         $join->on('listings.id', '=', 'listing_user.listing_id')
-                            ->where('listing_user.user_id', '=', $userId);
+                            ->where('listing_user.user_id', $userId)
+                            ->whereRaw('listing_user.id = ('.$bestPivotId->toRawSql().')');
                     })
+                    ->leftJoin('target_profiles', 'listing_user.target_profile_id', '=', 'target_profiles.id')
                     ->withCount(['applications' => fn ($q) => $q->where('user_id', $userId)])
                     ->select([
                         'listings.*',
@@ -39,6 +51,8 @@ class ListingsTable
                         'listing_user.read_at',
                         'listing_user.starred_at',
                         'listing_user.shortlisted_at',
+                        'listing_user.target_profile_id',
+                        'target_profiles.name as target_name',
                     ]);
             })
             ->columns([
@@ -61,10 +75,13 @@ class ListingsTable
                     ->icon(fn (Listing $record): ?string => $record->applications_count > 0 ? 'heroicon-s-check-circle' : null)
                     ->color('success')
                     ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['starred', 'all'])),
-                TextColumn::make('relevance')
-                    ->sortable()
+                TextColumn::make('match')
+                    ->label('Match')
+                    ->state(fn (Listing $record): string => $record->target_name
+                        ? $record->target_name.' · '.($record->relevance?->getLabel() ?? 'Unscored')
+                        : ($record->relevance?->getLabel() ?? 'Unscored'))
                     ->badge()
-                    ->placeholder('Unscored')
+                    ->color(fn (Listing $record) => $record->relevance?->getColor() ?? 'gray')
                     ->visible(fn (ListListings $livewire): bool => $livewire->activeTab === 'all'),
                 TextColumn::make('title')
                     ->searchable()
@@ -105,6 +122,13 @@ class ListingsTable
                 SelectFilter::make('relevance')
                     ->options(Relevance::class)
                     ->query(fn ($query, $data) => $data['value'] ? $query->where('listing_user.relevance', $data['value']) : $query),
+                SelectFilter::make('target')
+                    ->label('Target')
+                    ->options(fn () => auth()->user()
+                        ->targetProfiles
+                        ->mapWithKeys(fn (TargetProfile $t) => [$t->id => $t->name])
+                        ->all())
+                    ->query(fn ($query, $data) => $data['value'] ? $query->where('listing_user.target_profile_id', $data['value']) : $query),
             ])
             ->recordActions([
                 Action::make('toggleRead')

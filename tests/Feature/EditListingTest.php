@@ -44,10 +44,12 @@ it('can update listing fields', function () {
 });
 
 it('can update relevance on the pivot directly', function () {
+    $target = targetFor($this->user);
     $listing = Listing::factory()->create();
     $pivot = ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $target->id,
         'relevance' => Relevance::Maybe,
         'scored_at' => now(),
     ]);

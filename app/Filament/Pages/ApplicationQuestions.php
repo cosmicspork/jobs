@@ -7,6 +7,8 @@ use App\ApplicationQuestionSetStatus;
 use App\Models\ApplicationQuestion;
 use App\Models\ApplicationQuestionSet;
 use App\Models\Listing;
+use App\Models\TargetProfile;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
@@ -71,17 +73,35 @@ class ApplicationQuestions extends Page
             }
         }
 
+        /** @var User $user */
+        $user = auth()->user();
+        $defaultTarget = $listingId
+            ? $user->bestTargetFor(Listing::find($listingId))
+            : $user->activeTargets()->first();
+
         $this->form->fill([
             'listing_id' => $listingId,
+            'target_profile_id' => $defaultTarget?->id,
             'questions' => self::EMPTY_QUESTIONS,
         ]);
     }
 
     public function form(Schema $schema): Schema
     {
+        /** @var User $user */
+        $user = auth()->user();
+        $targetOptions = $user->activeTargets()
+            ->mapWithKeys(fn (TargetProfile $t) => [$t->id => $t->name])
+            ->all();
+
         return $schema
             ->components([
                 Form::make([
+                    Select::make('target_profile_id')
+                        ->label('Target')
+                        ->options($targetOptions)
+                        ->required()
+                        ->disabled($this->showResults),
                     Select::make('listing_id')
                         ->label('Listing')
                         ->searchable()
@@ -125,17 +145,35 @@ class ApplicationQuestions extends Page
     {
         $state = $this->form->getState();
         $listingId = $state['listing_id'] ?? null;
+        $targetId = $state['target_profile_id'] ?? null;
         $questions = $state['questions'];
+
+        /** @var User $user */
+        $user = auth()->user();
+
+        $target = $targetId
+            ? $user->targetProfiles()->where('id', $targetId)->where('is_active', true)->first()
+            : null;
+
+        if (! $target instanceof TargetProfile) {
+            Notification::make()->title('Target required')->body('Pick an active target to review against.')->danger()->send();
+
+            return;
+        }
 
         $questionSet = $this->questionSetId
             ? ApplicationQuestionSet::findOrFail($this->questionSetId)
             : ApplicationQuestionSet::create([
                 'listing_id' => $listingId,
                 'user_id' => auth()->id(),
+                'target_profile_id' => $target->id,
                 'status' => ApplicationQuestionSetStatus::Reviewing,
             ]);
 
-        $questionSet->update(['status' => ApplicationQuestionSetStatus::Reviewing]);
+        $questionSet->update([
+            'target_profile_id' => $target->id,
+            'status' => ApplicationQuestionSetStatus::Reviewing,
+        ]);
 
         $questionSet->questions()->delete();
 
@@ -152,7 +190,7 @@ class ApplicationQuestions extends Page
         $prompt = $this->buildAgentPrompt($questions, $listingId);
 
         try {
-            $response = (new ApplicationQuestionsAgent(auth()->user()))->prompt($prompt);
+            $response = (new ApplicationQuestionsAgent($user, $target))->prompt($prompt);
 
             foreach ($response['answers'] as $answer) {
                 $index = $answer['question_index'];
@@ -221,6 +259,7 @@ class ApplicationQuestions extends Page
 
         $this->form->fill([
             'listing_id' => $questionSet->listing_id,
+            'target_profile_id' => $questionSet->target_profile_id,
             'questions' => $questions,
         ]);
 
@@ -233,8 +272,12 @@ class ApplicationQuestions extends Page
         $this->showResults = false;
         $this->results = [];
 
+        /** @var User $user */
+        $user = auth()->user();
+
         $this->form->fill([
             'listing_id' => null,
+            'target_profile_id' => $user->activeTargets()->first()?->id,
             'questions' => self::EMPTY_QUESTIONS,
         ]);
     }
@@ -267,11 +310,13 @@ class ApplicationQuestions extends Page
 
             $this->form->fill([
                 'listing_id' => $questionSet->listing_id,
+                'target_profile_id' => $questionSet->target_profile_id,
                 'questions' => [],
             ]);
         } else {
             $this->form->fill([
                 'listing_id' => $questionSet->listing_id,
+                'target_profile_id' => $questionSet->target_profile_id,
                 'questions' => $questionSet->questions->map(fn (ApplicationQuestion $q) => [
                     'question' => $q->question,
                     'answer' => $q->answer,

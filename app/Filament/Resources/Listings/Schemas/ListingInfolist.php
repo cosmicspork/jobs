@@ -4,10 +4,11 @@ namespace App\Filament\Resources\Listings\Schemas;
 
 use App\Models\Listing;
 use App\Models\ListingUser;
-use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Collection;
 
 class ListingInfolist
 {
@@ -23,8 +24,9 @@ class ListingInfolist
                         TextEntry::make('company'),
                         TextEntry::make('board')
                             ->badge(),
-                        IconEntry::make('remote')
-                            ->boolean(),
+                        TextEntry::make('remote')
+                            ->state(fn (Listing $record): string => $record->remote ? 'Yes' : 'No')
+                            ->badge(),
                         TextEntry::make('salary_min')
                             ->label('Salary Min')
                             ->money('usd', divideBy: 1)
@@ -43,49 +45,13 @@ class ListingInfolist
                             ->formatStateUsing(fn (?string $state): string => nl2br(e($state ?? '')))
                             ->placeholder('No description'),
                     ]),
-                Section::make('Why this score')
-                    ->description(fn (Listing $record): ?string => static::getPivot($record)?->scored_at
-                        ? 'How the scoring agent classified this listing against your profile.'
-                        : "This listing hasn't been scored yet.")
-                    ->columns(3)
+                Section::make('Match by target')
+                    ->description('How this listing scored against each of your active targets.')
                     ->schema([
-                        TextEntry::make('pivot_reasoning')
-                            ->label('Reasoning')
-                            ->columnSpanFull()
-                            ->placeholder('No reasoning recorded')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['reasoning'] ?? null),
-                        TextEntry::make('pivot_relevance')
-                            ->label('Relevance')
-                            ->badge()
-                            ->placeholder('Unscored')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->relevance),
-                        TextEntry::make('pivot_role_type')
-                            ->label('Role Type')
-                            ->placeholder('Unknown')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['role_type'] ?? null),
-                        TextEntry::make('pivot_scored_at')
-                            ->label('Scored')
-                            ->since()
-                            ->placeholder('Not scored')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->scored_at),
-                        TextEntry::make('pivot_matched_skills')
-                            ->label('Matched Skills')
-                            ->badge()
-                            ->color('success')
-                            ->placeholder('None')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['matched_skills'] ?? null),
-                        TextEntry::make('pivot_gaps')
-                            ->label('Gaps')
-                            ->badge()
-                            ->color('danger')
-                            ->placeholder('None')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['gaps'] ?? null),
-                        TextEntry::make('pivot_quality_signals')
-                            ->label('Posting Quality Signals')
-                            ->badge()
-                            ->color('info')
-                            ->placeholder('None')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->score_data['posting_quality_signals'] ?? null),
+                        View::make('filament.infolists.target-scores')
+                            ->viewData(fn (Listing $record): array => [
+                                'pivots' => self::getPivotsForRecord($record),
+                            ]),
                     ]),
                 Section::make('Timestamps')
                     ->columns(3)
@@ -96,29 +62,39 @@ class ListingInfolist
                             ->label('Read')
                             ->since()
                             ->placeholder('Unread')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->read_at),
+                            ->getStateUsing(fn (Listing $record) => self::getBestPivot($record)?->read_at),
                         TextEntry::make('pivot_starred_at')
                             ->label('Starred')
                             ->since()
                             ->placeholder('Not starred')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->starred_at),
+                            ->getStateUsing(fn (Listing $record) => self::getBestPivot($record)?->starred_at),
                         TextEntry::make('pivot_shortlisted_at')
                             ->label('Shortlisted')
                             ->since()
                             ->placeholder('Not shortlisted')
-                            ->getStateUsing(fn (Listing $record) => static::getPivot($record)?->shortlisted_at),
+                            ->getStateUsing(fn (Listing $record) => self::getBestPivot($record)?->shortlisted_at),
                         TextEntry::make('created_at')
                             ->since(),
                     ]),
             ]);
     }
 
-    private static function getPivot(Listing $record): ?ListingUser
+    private static function getBestPivot(Listing $record): ?ListingUser
     {
-        static $cache = [];
+        return ListingUser::forUserListing(auth()->id(), $record->id);
+    }
 
-        $key = $record->id.'_'.auth()->id();
-
-        return $cache[$key] ??= ListingUser::forUserListing(auth()->id(), $record->id);
+    /**
+     * @return Collection<int, ListingUser>
+     */
+    private static function getPivotsForRecord(Listing $record): Collection
+    {
+        return ListingUser::query()
+            ->where('listing_id', $record->id)
+            ->where('user_id', auth()->id())
+            ->with('targetProfile')
+            ->get()
+            ->filter(fn (ListingUser $p) => $p->targetProfile?->is_active)
+            ->sortBy(fn (ListingUser $p) => $p->targetProfile->sort_order);
     }
 }

@@ -72,8 +72,8 @@
                         @if($listing->salary_min || $listing->salary_max)
                             &middot; ${{ number_format($listing->salary_min / 1000) }}k–${{ number_format($listing->salary_max / 1000) }}k
                         @endif
-                        @if($listing->score_data['role_type'] ?? null)
-                            &middot; {{ strtoupper($listing->score_data['role_type']) }}
+                        @if($listing->target_name ?? null)
+                            &middot; <span class="badge badge-blue">{{ $listing->target_name }}</span>
                         @endif
                     </div>
                     <div class="listing-tags">
@@ -105,6 +105,9 @@
                     <span class="meta">
                         &mdash; {{ $listing->companyName() }}
                         &middot; {{ $listing->board }}
+                        @if($listing->target_name ?? null)
+                            &middot; <span class="badge badge-blue">{{ $listing->target_name }}</span>
+                        @endif
                         &middot; <a href="{{ route('filament.admin.resources.listings.view', $listing) }}" style="color: #2563eb; text-decoration: none;">Admin</a>
                     </span>
                 </div>

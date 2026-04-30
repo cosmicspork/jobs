@@ -16,7 +16,8 @@ function buildEvent(Usage $usage, Meta $meta): AgentPrompted
     $response = new AgentResponse('inv-1', '{}', $usage, $meta);
 
     $user = User::factory()->create();
-    $agent = new JobScorerAgent($user);
+    $target = targetFor($user);
+    $agent = new JobScorerAgent($user, $target);
     $provider = Mockery::mock(TextProvider::class);
 
     $prompt = new AgentPrompt($agent, 'test', [], $provider, $meta->model ?? 'test');

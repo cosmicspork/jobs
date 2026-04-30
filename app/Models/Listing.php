@@ -2,13 +2,31 @@
 
 namespace App\Models;
 
+use App\Relevance;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * Joined-pivot virtual properties: ListingsTable, ListingInfolist, and
+ * SendDailyDigest hydrate Listing instances with columns aliased from
+ * `listing_user`. These are not real Listing columns.
+ *
+ * @property string|null $pivot_id
+ * @property Relevance|null $relevance
+ * @property array<string, mixed>|null $score_data
+ * @property Carbon|null $scored_at
+ * @property Carbon|null $read_at
+ * @property Carbon|null $starred_at
+ * @property Carbon|null $shortlisted_at
+ * @property string|null $target_profile_id
+ * @property string|null $target_name
+ * @property int $applications_count
+ */
 class Listing extends Model
 {
     /** @use HasFactory<ListingFactory> */
@@ -28,7 +46,7 @@ class Listing extends Model
     ];
 
     /**
-     * @return BelongsToMany<User, $this>
+     * @return BelongsToMany<User, $this, ListingUser, 'pivot'>
      */
     public function users(): BelongsToMany
     {

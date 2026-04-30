@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Ai\Agents\JobScorerAgent;
 use App\Models\Listing;
 use App\Models\ListingUser;
-use App\Models\User;
+use App\Models\TargetProfile;
 use App\Relevance;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -21,12 +21,14 @@ class ScoreListing implements ShouldQueue
 
     public function __construct(
         public Listing $listing,
-        public User $user,
+        public TargetProfile $target,
     ) {}
 
     public function handle(): void
     {
-        $response = (new JobScorerAgent($this->user))->prompt(
+        $user = $this->target->user;
+
+        $response = (new JobScorerAgent($user, $this->target))->prompt(
             "Score this job listing (listing_id: {$this->listing->id})."
         );
 
@@ -40,19 +42,18 @@ class ScoreListing implements ShouldQueue
 
         ListingUser::query()
             ->where('listing_id', $this->listing->id)
-            ->where('user_id', $this->user->id)
+            ->where('target_profile_id', $this->target->id)
             ->update([
                 'relevance' => $relevance,
                 'score_data' => [
                     'matched_skills' => $response['matched_skills'],
                     'gaps' => $response['gaps'],
                     'reasoning' => $response['reasoning'],
-                    'role_type' => $response['role_type'],
                     'posting_quality_signals' => $response['posting_quality_signals'] ?? [],
                 ],
                 'scored_at' => now(),
             ]);
 
-        Log::info("Scored listing {$this->listing->id} for user {$this->user->id}: {$relevance->value}");
+        Log::info("Scored listing {$this->listing->id} for target {$this->target->id} ({$this->target->name}): {$relevance->value}");
     }
 }

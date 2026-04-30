@@ -4,20 +4,20 @@ namespace App\Services;
 
 use App\FilterReason;
 use App\Models\Listing;
-use App\Models\User;
+use App\Models\TargetProfile;
 
 class ListingFilter
 {
-    public function reasonToSkip(Listing $listing, User $user): ?FilterReason
+    public function reasonToSkip(Listing $listing, TargetProfile $target): ?FilterReason
     {
-        $prefs = $user->preferences ?? [];
+        $criteria = $target->criteria ?? [];
 
-        if (($prefs['remote'] ?? false) === true && $listing->remote === false) {
+        if (($criteria['remote'] ?? false) === true && $listing->remote === false) {
             return FilterReason::NotRemote;
         }
 
-        $userMin = $prefs['salary_min'] ?? null;
-        if ($userMin !== null && $listing->salary_max !== null && $listing->salary_max < $userMin) {
+        $min = $criteria['salary_min'] ?? null;
+        if ($min !== null && $listing->salary_max !== null && $listing->salary_max < $min) {
             return FilterReason::BelowSalaryMin;
         }
 

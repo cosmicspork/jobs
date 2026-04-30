@@ -11,29 +11,27 @@ use Illuminate\Support\Collection;
 
 function createScoredListing(User $user, Relevance $relevance = Relevance::Relevant, array $listingAttrs = []): Listing
 {
+    $target = $user->targetProfiles()->first() ?? targetFor($user);
     $listing = Listing::factory()->create($listingAttrs);
-    ListingUser::create([
-        'listing_id' => $listing->id,
-        'user_id' => $user->id,
-        'relevance' => $relevance,
-        'score_data' => [
-            'matched_skills' => ['PHP', 'Laravel'],
-            'gaps' => ['Go'],
-            'reasoning' => 'Good match for a Laravel developer.',
-            'role_type' => 'ic',
-            'posting_quality_signals' => ['salary listed'],
-        ],
-        'scored_at' => now(),
-    ]);
-
-    // Attach score_data to listing object so the view template can access it
-    $listing->setAttribute('score_data', [
+    $scoreData = [
         'matched_skills' => ['PHP', 'Laravel'],
         'gaps' => ['Go'],
         'reasoning' => 'Good match for a Laravel developer.',
-        'role_type' => 'ic',
         'posting_quality_signals' => ['salary listed'],
+    ];
+
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $target->id,
+        'relevance' => $relevance,
+        'score_data' => $scoreData,
+        'scored_at' => now(),
     ]);
+
+    // Attach score_data + target name to the listing object so the view template can access them.
+    $listing->setAttribute('score_data', $scoreData);
+    $listing->setAttribute('target_name', $target->name);
 
     return $listing;
 }
@@ -156,10 +154,12 @@ it('renders failed application updates', function () {
 });
 
 it('renders shortlisted listings without applications', function () {
+    $target = targetFor($this->user);
     $listing = Listing::factory()->create(['title' => 'Staff Engineer at Startup']);
     ListingUser::create([
         'listing_id' => $listing->id,
         'user_id' => $this->user->id,
+        'target_profile_id' => $target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
         'shortlisted_at' => now(),

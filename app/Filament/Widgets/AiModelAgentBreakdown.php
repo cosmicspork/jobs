@@ -16,7 +16,7 @@ class AiModelAgentBreakdown extends TableWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->is_admin ?? false;
+        return auth()->user()->is_admin;
     }
 
     public function getTableRecordKey(Model|array $record): string

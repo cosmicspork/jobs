@@ -30,6 +30,10 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'is_admin' => false,
+            'digest_enabled' => true,
+            'digest_time' => '08:00',
+            'timezone' => 'America/Chicago',
         ];
     }
 
@@ -44,7 +48,8 @@ class UserFactory extends Factory
     }
 
     /**
-     * Engineering manager profile.
+     * Engineering manager profile — identity only. Use ->afterCreating(...) or attach
+     * a TargetProfileFactory::manager() target separately if scoring needs to run.
      */
     public function manager(): static
     {
@@ -84,17 +89,13 @@ class UserFactory extends Factory
                 ],
             ],
             'education' => ['B.S. Computer Science, State University'],
-            'preferences' => [
-                'remote' => true,
-                'salary_min' => 220000,
-                'locations' => ['Remote', 'Austin, TX'],
-                'role_type' => 'em',
-            ],
-        ]);
+        ])->afterCreating(function (User $user): void {
+            TargetProfileFactory::new()->manager()->for($user)->create();
+        });
     }
 
     /**
-     * Individual contributor (senior engineer) profile.
+     * Individual contributor profile — identity + a senior IC target.
      */
     public function ic(): static
     {
@@ -129,12 +130,8 @@ class UserFactory extends Factory
                 ],
             ],
             'education' => ['B.S. Computer Science, Local University'],
-            'preferences' => [
-                'remote' => true,
-                'salary_min' => 175000,
-                'locations' => ['Remote'],
-                'role_type' => 'ic',
-            ],
-        ]);
+        ])->afterCreating(function (User $user): void {
+            TargetProfileFactory::new()->ic()->for($user)->create();
+        });
     }
 }
