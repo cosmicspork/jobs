@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\ApplicationStatus;
 use App\Mail\DailyDigest;
-use App\Models\AiUsage;
 use App\Models\Application;
 use App\Models\ListingUser;
 use App\Models\User;
@@ -80,7 +79,6 @@ class SendDailyDigest extends Command
 
         $relevantListings = $scoredPivots->get(Relevance::Relevant->value, collect())->map($attachContext);
         $maybeListings = $scoredPivots->get(Relevance::Maybe->value, collect())->map($attachContext);
-        $irrelevantCount = $scoredPivots->get(Relevance::Irrelevant->value, collect())->count();
 
         $applicationUpdates = Application::query()
             ->where('user_id', $user->id)
@@ -103,31 +101,11 @@ class SendDailyDigest extends Command
             ->get()
             ->pluck('listing');
 
-        $totalScraped = ListingUser::query()
-            ->where('user_id', $user->id)
-            ->where('created_at', '>=', $since)
-            ->distinct('listing_id')
-            ->count('listing_id');
-
-        $aiUsageBreakdown = AiUsage::query()
-            ->toBase()
-            ->where('user_id', $user->id)
-            ->where('created_at', '>=', $since)
-            ->selectRaw('model, SUM(cost) as total_cost, COUNT(*) as requests')
-            ->groupBy('model')
-            ->get();
-
         $stats = [
-            'total_scraped' => $totalScraped,
-            'relevant_count' => $relevantListings->count(),
-            'maybe_count' => $maybeListings->count(),
-            'irrelevant_count' => $irrelevantCount,
-            'ai_total_cost' => (float) $aiUsageBreakdown->sum('total_cost'),
-            'ai_usage_breakdown' => $aiUsageBreakdown->map(fn (object $row) => [
-                'model' => AiUsage::shortModelName($row->model),
-                'cost' => (float) $row->total_cost,
-                'requests' => (int) $row->requests,
-            ])->all(),
+            'screened_24h' => $this->countScreened($user, $since),
+            'screened_7d' => $this->countScreened($user, now()->subDays(7)),
+            'relevant_7d' => $this->countScoredRelevance($user, Relevance::Relevant, now()->subDays(7)),
+            'maybe_7d' => $this->countScoredRelevance($user, Relevance::Maybe, now()->subDays(7)),
         ];
 
         return new DailyDigest(
@@ -139,5 +117,24 @@ class SendDailyDigest extends Command
             shortlistedWithoutApplications: $shortlistedWithoutApplications,
             stats: $stats,
         );
+    }
+
+    protected function countScreened(User $user, Carbon $since): int
+    {
+        return ListingUser::query()
+            ->where('user_id', $user->id)
+            ->where('created_at', '>=', $since)
+            ->distinct('listing_id')
+            ->count('listing_id');
+    }
+
+    protected function countScoredRelevance(User $user, Relevance $relevance, Carbon $since): int
+    {
+        return ListingUser::query()
+            ->where('user_id', $user->id)
+            ->where('relevance', $relevance)
+            ->where('scored_at', '>=', $since)
+            ->distinct('listing_id')
+            ->count('listing_id');
     }
 }

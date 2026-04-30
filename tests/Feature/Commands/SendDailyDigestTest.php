@@ -2,12 +2,13 @@
 
 use App\ApplicationStatus;
 use App\Mail\DailyDigest;
-use App\Models\AiUsage;
 use App\Models\Application;
 use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Models\User;
 use App\Relevance;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -157,25 +158,56 @@ it('includes shortlisted listings without applications', function () {
     });
 });
 
-it('calculates ai usage stats', function () {
-    AiUsage::factory()->count(3)->create([
-        'user_id' => $this->user->id,
-        'model' => 'anthropic/claude-haiku-4-5',
-        'cost' => 0.50,
+function createPivotAt(Carbon $createdAt, int $userId, string $targetId, ?Relevance $relevance = null): void
+{
+    $pivot = ListingUser::create([
+        'listing_id' => Listing::factory()->create()->id,
+        'user_id' => $userId,
+        'target_profile_id' => $targetId,
+        'relevance' => $relevance,
+        'scored_at' => $relevance ? $createdAt : null,
     ]);
 
-    AiUsage::factory()->create([
-        'user_id' => $this->user->id,
-        'model' => 'anthropic/claude-haiku-4-5',
-        'cost' => 0.25,
-        'created_at' => now()->subDays(2),
-    ]);
+    // created_at isn't fillable; backdate via direct update after create.
+    DB::table('listing_user')->where('id', $pivot->id)->update(['created_at' => $createdAt]);
+}
+
+it('counts the 7-day screened, relevant, and maybe trend', function () {
+    foreach (range(1, 4) as $i) {
+        createPivotAt(now()->subDays(2), $this->user->id, $this->target->id, Relevance::Relevant);
+    }
+
+    foreach (range(1, 3) as $i) {
+        createPivotAt(now()->subDays(3), $this->user->id, $this->target->id, Relevance::Maybe);
+    }
+
+    // Screened but not yet scored (inside window)
+    foreach (range(1, 2) as $i) {
+        createPivotAt(now()->subDays(1), $this->user->id, $this->target->id);
+    }
+
+    // Outside the 7-day window — must be excluded from all three counts
+    createPivotAt(now()->subDays(10), $this->user->id, $this->target->id, Relevance::Relevant);
 
     $this->artisan('digest:send')->assertSuccessful();
 
     Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) {
-        return $mail->stats['ai_total_cost'] == 1.50
-            && count($mail->stats['ai_usage_breakdown']) === 1
-            && $mail->stats['ai_usage_breakdown'][0]['requests'] === 3;
+        return $mail->stats['screened_7d'] === 9
+            && $mail->stats['relevant_7d'] === 4
+            && $mail->stats['maybe_7d'] === 3;
+    });
+});
+
+it('counts the 24-hour screened total', function () {
+    foreach (range(1, 3) as $i) {
+        createPivotAt(now()->subHours(6), $this->user->id, $this->target->id);
+    }
+
+    createPivotAt(now()->subDays(2), $this->user->id, $this->target->id);
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) {
+        return $mail->stats['screened_24h'] === 3;
     });
 });

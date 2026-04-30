@@ -9,11 +9,11 @@ use App\Models\User;
 use App\Relevance;
 use Illuminate\Support\Collection;
 
-function createScoredListing(User $user, Relevance $relevance = Relevance::Relevant, array $listingAttrs = []): Listing
+function createScoredListing(User $user, Relevance $relevance = Relevance::Relevant, array $listingAttrs = [], ?array $scoreDataOverride = null): Listing
 {
     $target = $user->targetProfiles()->first() ?? targetFor($user);
     $listing = Listing::factory()->create($listingAttrs);
-    $scoreData = [
+    $scoreData = $scoreDataOverride ?? [
         'matched_skills' => ['PHP', 'Laravel'],
         'gaps' => ['Go'],
         'reasoning' => 'Good match for a Laravel developer.',
@@ -53,12 +53,10 @@ function buildDigest(
         failedApplications: $failed ?? collect(),
         shortlistedWithoutApplications: $shortlisted ?? collect(),
         stats: array_merge([
-            'total_scraped' => 0,
-            'relevant_count' => 0,
-            'maybe_count' => 0,
-            'irrelevant_count' => 0,
-            'ai_total_cost' => 0.0,
-            'ai_usage_breakdown' => [],
+            'screened_24h' => 0,
+            'screened_7d' => 0,
+            'relevant_7d' => 0,
+            'maybe_7d' => 0,
         ], $stats),
     );
 }
@@ -83,7 +81,6 @@ it('renders relevant listings with title company and skills', function () {
     $mailable = buildDigest(
         user: $this->user,
         relevant: collect([$listing]),
-        stats: ['relevant_count' => 1],
     );
 
     $html = $mailable->render();
@@ -116,7 +113,6 @@ it('renders maybe listings with count', function () {
     $mailable = buildDigest(
         user: $this->user,
         maybe: $listings,
-        stats: ['maybe_count' => 3],
     );
 
     $html = $mailable->render();
@@ -125,6 +121,25 @@ it('renders maybe listings with count', function () {
     foreach ($listings as $listing) {
         expect($html)->toContain($listing->title);
     }
+});
+
+it('shows the score reasoning on maybe listings', function () {
+    $listing = createScoredListing(
+        $this->user,
+        Relevance::Maybe,
+        scoreDataOverride: [
+            'matched_skills' => ['PHP'],
+            'gaps' => ['Kubernetes'],
+            'reasoning' => 'Strong Laravel fit but role leans heavily on infra ops.',
+            'posting_quality_signals' => [],
+        ],
+    );
+
+    $mailable = buildDigest(user: $this->user, maybe: collect([$listing]));
+
+    $html = $mailable->render();
+
+    expect($html)->toContain('Strong Laravel fit but role leans heavily on infra ops.');
 });
 
 it('renders ready application updates', function () {
@@ -174,28 +189,42 @@ it('renders shortlisted listings without applications', function () {
         ->toContain('Needs Application');
 });
 
-it('renders daily stats', function () {
+it('renders the 7-day trend section', function () {
     $mailable = buildDigest(user: $this->user, stats: [
-        'total_scraped' => 42,
-        'relevant_count' => 5,
-        'maybe_count' => 12,
-        'irrelevant_count' => 25,
-        'ai_total_cost' => 1.2345,
-        'ai_usage_breakdown' => [
-            ['model' => 'claude-haiku-4-5', 'cost' => 1.2345, 'requests' => 42],
-        ],
+        'screened_24h' => 12,
+        'screened_7d' => 84,
+        'relevant_7d' => 6,
+        'maybe_7d' => 14,
     ]);
 
     $html = $mailable->render();
 
     expect($html)
-        ->toContain('42')
-        ->toContain('$1.23')
-        ->toContain('claude-haiku-4-5')
-        ->toContain('42 requests');
+        ->toContain('Last 7 Days')
+        ->toContain('84')
+        ->toContain('listings screened')
+        ->toContain('6')
+        ->toContain('relevant')
+        ->toContain('14')
+        ->toContain('maybe')
+        ->not->toContain('AI Cost')
+        ->not->toContain('Last 24 Hours');
 });
 
-it('renders empty state messages when no data', function () {
+it('shows the screened count in the empty-state when listings were screened', function () {
+    $mailable = buildDigest(user: $this->user, stats: [
+        'screened_24h' => 47,
+        'screened_7d' => 47,
+    ]);
+
+    $html = $mailable->render();
+
+    expect($html)
+        ->toContain('we screened 47 listings')
+        ->not->toContain('No new relevant listings today.');
+});
+
+it('renders empty state messages when nothing was screened', function () {
     $mailable = buildDigest(user: $this->user);
 
     $html = $mailable->render();

@@ -19,7 +19,7 @@ class DailyDigest extends Mailable
      * @param  Collection<int, Application>  $readyApplications
      * @param  Collection<int, Application>  $failedApplications
      * @param  Collection<int, Listing>  $shortlistedWithoutApplications
-     * @param  array{total_scraped: int, relevant_count: int, maybe_count: int, irrelevant_count: int, ai_total_cost: float, ai_usage_breakdown: array<int, array{model: string, cost: float, requests: int}>}  $stats
+     * @param  array{screened_24h: int, screened_7d: int, relevant_7d: int, maybe_7d: int}  $stats
      */
     public function __construct(
         public readonly User $user,

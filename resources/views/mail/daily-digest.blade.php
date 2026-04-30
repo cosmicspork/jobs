@@ -29,20 +29,17 @@
         .listing-links { margin-top: 8px; font-size: 13px; }
         .listing-links a { color: #2563eb; text-decoration: none; }
         .listing-links a:hover { text-decoration: underline; }
-        .compact-listing { padding: 6px 0; font-size: 14px; }
-        .compact-listing a { color: #111827; text-decoration: none; font-weight: 500; }
-        .compact-listing a:hover { text-decoration: underline; }
-        .compact-listing .meta { color: #6b7280; font-size: 13px; }
         .app-item { padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
         .app-item:last-child { border-bottom: none; }
-        .stats-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-        .stat-card { flex: 1; min-width: 120px; background: #f9fafb; border-radius: 8px; padding: 14px; text-align: center; }
-        .stat-value { font-size: 24px; font-weight: 700; color: #111827; }
-        .stat-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
-        .empty-state { color: #9ca3af; font-style: italic; font-size: 14px; }
+        .empty-state { color: #6b7280; font-size: 14px; }
+        .empty-state em { color: #9ca3af; font-style: italic; }
+        .listing-reason { font-size: 13px; color: #4b5563; margin-top: 4px; }
         .footer { padding: 20px 32px; text-align: center; font-size: 12px; color: #9ca3af; background: #f9fafb; }
         .sub-section { margin-top: 14px; }
         .sub-section-title { font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .trend-row { display: flex; gap: 16px; flex-wrap: wrap; }
+        .trend-item { font-size: 14px; color: #374151; }
+        .trend-item strong { color: #111827; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -89,7 +86,13 @@
                     </div>
                 </div>
             @empty
-                <p class="empty-state">No new relevant listings today.</p>
+                <p class="empty-state">
+                    @if($stats['screened_24h'] > 0)
+                        No new matches today &mdash; we screened {{ $stats['screened_24h'] }} {{ Str::plural('listing', $stats['screened_24h']) }} for you in the last 24 hours.
+                    @else
+                        <em>No new relevant listings today.</em>
+                    @endif
+                </p>
             @endforelse
         </div>
 
@@ -100,19 +103,26 @@
                 Listings ({{ $maybeListings->count() }})
             </div>
             @forelse($maybeListings as $listing)
-                <div class="compact-listing">
-                    <a href="{{ $listing->url }}">{{ $listing->title }}</a>
-                    <span class="meta">
-                        &mdash; {{ $listing->companyName() }}
+                <div class="listing">
+                    <div class="listing-title">
+                        <a href="{{ $listing->url }}">{{ $listing->title }}</a>
+                    </div>
+                    <div class="listing-meta">
+                        {{ $listing->companyName() }}
                         &middot; {{ $listing->board }}
                         @if($listing->target_name ?? null)
                             &middot; <span class="badge badge-blue">{{ $listing->target_name }}</span>
                         @endif
-                        &middot; <a href="{{ route('filament.admin.resources.listings.view', $listing) }}" style="color: #2563eb; text-decoration: none;">Admin</a>
-                    </span>
+                    </div>
+                    @if(! empty($listing->score_data['reasoning']))
+                        <div class="listing-reason">{{ $listing->score_data['reasoning'] }}</div>
+                    @endif
+                    <div class="listing-links">
+                        <a href="{{ route('filament.admin.resources.listings.view', $listing) }}">View in Admin</a>
+                    </div>
                 </div>
             @empty
-                <p class="empty-state">No new maybe listings today.</p>
+                <p class="empty-state"><em>No new maybe listings today.</em></p>
             @endforelse
         </div>
 
@@ -165,40 +175,22 @@
             @endif
         </div>
 
-        {{-- Daily Stats --}}
+        {{-- 7-day trend --}}
         <div class="section">
             <div class="section-title">
-                <span class="badge badge-gray">Stats</span>
-                Last 24 Hours
+                <span class="badge badge-gray">Trend</span>
+                Last 7 Days
             </div>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">{{ $stats['total_scraped'] }}</div>
-                    <div class="stat-label">Scraped</div>
+            <div class="trend-row">
+                <div class="trend-item">
+                    <strong>{{ $stats['screened_7d'] }}</strong> {{ Str::plural('listing', $stats['screened_7d']) }} screened
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="color: #166534;">{{ $stats['relevant_count'] }}</div>
-                    <div class="stat-label">Relevant</div>
+                <div class="trend-item">
+                    <strong style="color: #166534;">{{ $stats['relevant_7d'] }}</strong> relevant
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="color: #854d0e;">{{ $stats['maybe_count'] }}</div>
-                    <div class="stat-label">Maybe</div>
+                <div class="trend-item">
+                    <strong style="color: #854d0e;">{{ $stats['maybe_7d'] }}</strong> maybe
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="color: #991b1b;">{{ $stats['irrelevant_count'] }}</div>
-                    <div class="stat-label">Irrelevant</div>
-                </div>
-            </div>
-            <div style="margin-top: 16px;">
-                <div class="sub-section-title">AI Costs</div>
-                <div style="font-size: 14px; margin-top: 4px;">
-                    Total: <strong>${{ number_format($stats['ai_total_cost'], 2) }}</strong>
-                </div>
-                @foreach($stats['ai_usage_breakdown'] as $usage)
-                    <div style="font-size: 13px; color: #6b7280; margin-top: 2px;">
-                        {{ $usage['model'] }}: ${{ number_format($usage['cost'], 4) }} ({{ $usage['requests'] }} {{ Str::plural('request', $usage['requests']) }})
-                    </div>
-                @endforeach
             </div>
         </div>
 
