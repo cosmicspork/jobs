@@ -16,13 +16,12 @@ it('returns expected keys from getProfileData', function () {
     expect($profile)->toHaveKeys([
         'name',
         'email',
-        'title',
         'summary',
         'skills',
         'experience',
         'education',
         'experience_years',
-    ]);
+    ])->and($profile)->not->toHaveKey('title');
 });
 
 it('returns skills as a flat non-empty array', function () {

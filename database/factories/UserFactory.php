@@ -31,7 +31,7 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'is_admin' => false,
-            'digest_enabled' => true,
+            'digest_enabled' => false,
             'digest_time' => '08:00',
             'timezone' => 'America/Chicago',
         ];
@@ -54,7 +54,6 @@ class UserFactory extends Factory
     public function manager(): static
     {
         return $this->state([
-            'title' => 'Engineering Manager',
             'experience_years' => '12+',
             'summary' => 'Engineering manager with 12+ years building and leading teams across backend and platform engineering. Experienced hiring, coaching, and shipping large cross-functional initiatives.',
             'skills' => [
@@ -100,7 +99,6 @@ class UserFactory extends Factory
     public function ic(): static
     {
         return $this->state([
-            'title' => 'Senior Software Engineer',
             'experience_years' => '8+',
             'summary' => 'Senior software engineer with 8+ years of experience in full-stack web development, focused on Laravel, TypeScript, and developer productivity.',
             'skills' => [

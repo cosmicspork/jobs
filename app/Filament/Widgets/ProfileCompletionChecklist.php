@@ -44,7 +44,6 @@ class ProfileCompletionChecklist extends Widget
         $user = auth()->user();
 
         return $this->items = [
-            ['label' => 'Job title', 'done' => ! empty($user->title)],
             ['label' => 'Summary', 'done' => ! empty($user->summary)],
             ['label' => 'Skills', 'done' => ! empty($user->skills)],
             ['label' => 'At least one active target', 'done' => $user->hasReadyTargetProfile()],

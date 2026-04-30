@@ -6,7 +6,6 @@ use App\Models\User;
 beforeEach(function () {
     $this->user = login(User::factory()->create([
         'name' => 'Test User',
-        'title' => 'Engineering Manager',
         'summary' => 'A tailored summary.',
         'skills' => ['Team Building', 'PHP'],
         'experience' => [

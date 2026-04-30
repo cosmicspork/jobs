@@ -8,7 +8,6 @@ use Laravel\Ai\Tools\Request;
 it('returns the candidate identity as json', function () {
     $user = User::factory()->create([
         'name' => 'Test User',
-        'title' => 'Senior Engineer',
         'summary' => 'A clear summary.',
         'skills' => ['PHP', 'Laravel', 'Mentorship'],
         'experience' => [['role' => 'Dev', 'company' => 'TestCo']],
@@ -24,9 +23,9 @@ it('returns the candidate identity as json', function () {
 
     expect($data)->toBeArray()
         ->and($data['name'])->toBe('Test User')
-        ->and($data['title'])->toBe('Senior Engineer')
         ->and($data['summary'])->toBe('A clear summary.')
         ->and($data['skills'])->toBeArray()->not->toBeEmpty()
+        ->and($data)->not->toHaveKey('title')
         ->and($data)->not->toHaveKey('role_type')
         ->and($data)->not->toHaveKey('preferences');
 });

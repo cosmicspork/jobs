@@ -124,7 +124,6 @@ class AdminUsers extends Page implements HasTable
                 'name' => $record->name,
                 'email' => $record->email,
                 'is_admin' => $record->is_admin,
-                'title' => $record->title,
                 'experience_years' => $record->experience_years,
                 'summary' => $record->summary,
                 'skills' => $record->skills ?? [],
@@ -145,48 +144,87 @@ class AdminUsers extends Page implements HasTable
                         Toggle::make('is_admin')->label('Admin'),
                     ]),
                 Section::make('About')
+                    ->description('Career identity. Keep direction-neutral — career aspirations belong in each target below.')
                     ->columns(6)
                     ->schema([
-                        TextInput::make('title')->columnSpan(4),
-                        TextInput::make('experience_years')->columnSpan(2),
-                        Textarea::make('summary')->rows(3)->columnSpanFull(),
+                        TextInput::make('experience_years')
+                            ->helperText('Surfaces in the resume header.')
+                            ->columnSpan(2),
+                        Textarea::make('summary')
+                            ->helperText('2-3 sentences on who they are. Avoid "seeking X" / aspiration language — that lives in each target\'s positioning.')
+                            ->rows(3)
+                            ->columnSpanFull(),
                     ]),
                 Section::make('Skills')
+                    ->description('One flat list. Each target picks its own subset at scoring/tailoring time.')
                     ->schema([
-                        TagsInput::make('skills'),
+                        TagsInput::make('skills')
+                            ->helperText('The resume agent picks 10-12 most relevant per target; the scorer reads the full list.'),
                     ]),
                 Section::make('Experience & education')
                     ->schema([
                         Repeater::make('experience')
+                            ->helperText('Reverse-chronological. Each highlight should be a complete bullet ready for a resume.')
                             ->schema([
                                 TextInput::make('role')->required(),
                                 TextInput::make('company')->required(),
                                 TextInput::make('period')->required(),
-                                TagsInput::make('highlights'),
+                                TagsInput::make('highlights')
+                                    ->helperText('Action verb + what + scope/scale + result. The agent picks/reorders, never invents.'),
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
-                        TagsInput::make('education'),
+                        TagsInput::make('education')
+                            ->helperText('One entry per degree or certificate.'),
                     ]),
                 Section::make('Targets')
+                    ->description('Career directions. Each target is scored and tailored independently — one per role type.')
                     ->schema([
                         Repeater::make('targets')
                             ->schema([
                                 Grid::make(6)->schema([
-                                    TextInput::make('name')->required()->columnSpan(4),
-                                    Toggle::make('is_active')->label('Active')->default(true)->columnSpan(1),
-                                    TextInput::make('sort_order')->label('Order')->numeric()->default(0)->columnSpan(1),
+                                    TextInput::make('name')
+                                        ->helperText('Short label — appears as a badge in the digest and listings.')
+                                        ->required()
+                                        ->columnSpan(4),
+                                    Toggle::make('is_active')
+                                        ->label('Active')
+                                        ->helperText('Inactive targets are skipped during scraping/scoring.')
+                                        ->default(true)
+                                        ->columnSpan(1),
+                                    TextInput::make('sort_order')
+                                        ->label('Order')
+                                        ->helperText('Lower first.')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->columnSpan(1),
                                 ]),
-                                Textarea::make('positioning')->rows(3)->required(),
-                                TagsInput::make('target_titles')->required(),
+                                Textarea::make('positioning')
+                                    ->helperText('2-3 sentences: what role they\'re aiming for and why. Canonical career-direction signal for every agent.')
+                                    ->rows(3)
+                                    ->required(),
+                                TagsInput::make('target_titles')
+                                    ->helperText('Job titles that count as a strong match.')
+                                    ->required(),
                                 Grid::make(3)->schema([
-                                    Toggle::make('remote')->label('Remote required')->default(true),
-                                    TextInput::make('salary_min')->numeric()->prefix('$'),
-                                    TagsInput::make('locations'),
+                                    Toggle::make('remote')
+                                        ->label('Remote required')
+                                        ->helperText('On-site-only listings auto-filtered.')
+                                        ->default(true),
+                                    TextInput::make('salary_min')
+                                        ->helperText('Listings explicitly below this score lower; missing salary is not penalized.')
+                                        ->numeric()
+                                        ->prefix('$'),
+                                    TagsInput::make('locations')
+                                        ->helperText('Acceptable locations. "Remote" alone is fine.'),
                                 ]),
                                 Grid::make(2)->schema([
-                                    TagsInput::make('must_have_keywords')->label('Must-have keywords'),
-                                    TagsInput::make('avoid_keywords')->label('Avoid keywords'),
+                                    TagsInput::make('must_have_keywords')
+                                        ->label('Must-have keywords')
+                                        ->helperText('Missing ALL → irrelevant. Usually leave empty.'),
+                                    TagsInput::make('avoid_keywords')
+                                        ->label('Avoid keywords')
+                                        ->helperText('Featuring any → irrelevant. Cheapest noise filter.'),
                                 ]),
                             ])
                             ->collapsible()
@@ -196,10 +234,16 @@ class AdminUsers extends Page implements HasTable
                     ->columns(6)
                     ->schema([
                         CheckboxList::make('boards')
+                            ->helperText('Sources to pull listings from.')
                             ->options(fn (): array => User::boardOptions())
                             ->columnSpanFull(),
-                        Toggle::make('digest_enabled')->columnSpan(2),
-                        TextInput::make('digest_time')->placeholder('08:00')->columnSpan(2),
+                        Toggle::make('digest_enabled')
+                            ->helperText('Daily summary of new matches.')
+                            ->columnSpan(2),
+                        TextInput::make('digest_time')
+                            ->placeholder('08:00')
+                            ->helperText('24-hour clock, user\'s timezone.')
+                            ->columnSpan(2),
                         Select::make('timezone')
                             ->options(fn (): array => User::timezoneOptions())
                             ->searchable()
@@ -211,13 +255,12 @@ class AdminUsers extends Page implements HasTable
                     'name' => $data['name'],
                     'email' => $data['email'],
                     'is_admin' => $data['is_admin'] ?? false,
-                    'title' => $data['title'] ?? null,
                     'experience_years' => $data['experience_years'] ?? null,
                     'summary' => $data['summary'] ?? null,
                     'skills' => $data['skills'] ?? [],
                     'experience' => $data['experience'] ?? [],
                     'education' => $data['education'] ?? [],
-                    'digest_enabled' => $data['digest_enabled'] ?? true,
+                    'digest_enabled' => $data['digest_enabled'] ?? false,
                     'digest_time' => $data['digest_time'] ?? '08:00',
                     'timezone' => $data['timezone'] ?? 'America/Chicago',
                 ]);

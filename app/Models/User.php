@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
  * @property int $id
  * @property string $name
  * @property string $email
- * @property string|null $title
  * @property string|null $summary
  * @property array<int, string>|null $skills
  * @property array<int, array<string, mixed>>|null $experience
@@ -39,7 +38,6 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
-        'title',
         'summary',
         'skills',
         'experience',
@@ -150,7 +148,6 @@ class User extends Authenticatable implements FilamentUser
         return [
             'name' => $this->name,
             'email' => $this->email,
-            'title' => $this->title,
             'summary' => $this->summary,
             'skills' => $this->skills ?? [],
             'experience' => $this->experience ?? [],
@@ -305,7 +302,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function hasMinimumProfile(): bool
     {
-        if (empty($this->title) || empty($this->summary) || empty($this->skills)) {
+        if (empty($this->summary) || empty($this->skills)) {
             return false;
         }
 

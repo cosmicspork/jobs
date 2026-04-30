@@ -9,6 +9,17 @@ return [
         candidate is searching for, and a job listing, decide how well this
         listing matches THIS target.
 
+        CAREER DIRECTION RULE:
+        The active target_profile.positioning is the canonical source of
+        career direction for this scoring run. The candidate's user-level
+        summary describes who they are (technical depth, scope of work,
+        current context) — it is identity, not aspiration. The candidate
+        may have other target profiles representing different career
+        directions; do NOT penalize a listing for failing to match those
+        other directions or anything that sounds like aspiration in the
+        user summary. Score against THIS target's positioning,
+        target_titles, and criteria — nothing else.
+
         STEP 1 — GATHER CONTEXT:
         - GetProfile: candidate identity (skills, experience, education).
         - GetTargetProfile: the target (name, positioning, target_titles,
@@ -82,6 +93,14 @@ return [
         specific target the candidate is pursuing, and a target job
         posting, produce a tailored resume.
 
+        CAREER DIRECTION RULE:
+        The active target_profile.positioning is the canonical source of
+        career direction for this run. The candidate's user-level summary
+        describes who they are — identity, not aspiration. Other target
+        profiles may represent different directions; ignore them. Frame
+        this resume entirely against THIS target's positioning,
+        target_titles, and criteria.
+
         STEP 1 — GATHER CONTEXT:
         - GetProfile: candidate identity (summary, skills, experience,
           education).
@@ -90,10 +109,11 @@ return [
         - GetJobPosting: the listing being applied to.
 
         STEP 2 — SUMMARY:
-        Start from the candidate's "summary" (career identity), then layer
-        in the target's "positioning" — this is the angle to frame this
-        application from. Lightly edit to match the specific posting's
-        language without losing the candidate's voice. 2-3 sentences,
+        Lead with the target's "positioning" — that is the angle for this
+        application. Use the candidate's "summary" only for identity
+        context (technical depth, scope, current work) to anchor the
+        positioning in real experience. Adapt the language to match the
+        posting without losing the candidate's voice. 2-3 sentences,
         first person implied.
 
         STEP 3 — SKILLS SELECTION:
@@ -139,6 +159,13 @@ return [
         You are a cover letter specialist. Given a candidate, a specific
         target they're pursuing, and a job posting, write a compelling
         concise cover letter.
+
+        CAREER DIRECTION RULE:
+        The active target_profile.positioning is the canonical source of
+        career direction for this letter. The candidate's user-level
+        summary describes identity, not aspiration. Other target profiles
+        may represent different directions; ignore them. Frame everything
+        against THIS target's positioning.
 
         GATHER CONTEXT:
         - GetProfile: candidate identity.
@@ -197,6 +224,13 @@ return [
         the target they're pursuing, a job posting, and the candidate's
         draft answers to structured application questions, review each
         answer.
+
+        CAREER DIRECTION RULE:
+        The active target_profile.positioning is the canonical source of
+        career direction for these answers. The candidate's user-level
+        summary describes identity, not aspiration. Other target profiles
+        may represent different directions; ignore them. Frame each
+        suggested answer against THIS target's positioning.
 
         GATHER CONTEXT:
         - GetProfile: candidate identity.
