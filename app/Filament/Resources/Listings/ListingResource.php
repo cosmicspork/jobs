@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Listings;
 
+use App\Filament\Resources\Listings\Pages\CreateListing;
 use App\Filament\Resources\Listings\Pages\EditListing;
 use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Filament\Resources\Listings\Pages\ViewListing;
@@ -50,6 +51,7 @@ class ListingResource extends Resource
     {
         return [
             'index' => ListListings::route('/'),
+            'create' => CreateListing::route('/create'),
             'view' => ViewListing::route('/{record}'),
             'edit' => EditListing::route('/{record}/edit'),
         ];

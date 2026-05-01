@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Listings\Pages;
 
 use App\Filament\Resources\Listings\ListingResource;
 use App\Relevance;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,15 @@ class ListListings extends ListRecords
     public function getDefaultActiveTab(): string|int|null
     {
         return 'new';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Add Listing')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 
     public function getTabs(): array

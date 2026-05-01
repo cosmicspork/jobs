@@ -26,6 +26,12 @@ class ListingForm
                             ->required(),
                         Toggle::make('remote')
                             ->inline(false),
+                        TextInput::make('url')
+                            ->label('Job URL')
+                            ->url()
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->columnSpanFull(),
                         TextInput::make('salary_min')
                             ->label('Salary Min')
                             ->numeric()
@@ -35,6 +41,7 @@ class ListingForm
                             ->numeric()
                             ->prefix('$'),
                         Textarea::make('description')
+                            ->required()
                             ->columnSpanFull()
                             ->rows(12)
                             ->helperText('Paste the full job posting here for better AI-generated documents.'),
