@@ -14,7 +14,7 @@ class AiUsage extends Model
 
     private const SONNET_PRICING = ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30];
 
-    private const HAIKU_PRICING = ['input' => 0.80, 'output' => 4.00, 'cacheWrite' => 1.00, 'cacheRead' => 0.08];
+    private const HAIKU_PRICING = ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10];
 
     /**
      * OpenRouter pricing per million tokens.

@@ -55,8 +55,8 @@ class AdminOverviewStats extends StatsOverviewWidget
             Stat::make('AI Spend', '$'.number_format($totalCost, 2))
                 ->description('Today: $'.number_format($todayCost, 2))
                 ->color('warning'),
-            Stat::make('Scored Coverage', $coveragePct.'%')
-                ->description(number_format($unscored).' unscored')
+            Stat::make('Pivot Coverage', $coveragePct.'%')
+                ->description(number_format($unscored).' unscored (listing × target pairs)')
                 ->color(match (true) {
                     $coveragePct >= 80 => 'success',
                     $coveragePct >= 50 => 'primary',

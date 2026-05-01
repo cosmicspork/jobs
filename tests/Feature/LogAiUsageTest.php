@@ -65,8 +65,8 @@ it('calculates cost correctly for haiku', function () {
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
-    // Haiku: $0.80/M input + $4.00/M output = $4.80
-    expect(round((float) AiUsage::first()->cost, 2))->toBe(4.80);
+    // Haiku: $1.00/M input + $5.00/M output = $6.00
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
 });
 
 it('calculates cost correctly for sonnet', function () {
@@ -90,8 +90,8 @@ it('includes cache token costs in calculation', function () {
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
-    // Haiku cache: $1.00/M write + $0.08/M read = $1.08
-    expect(round((float) AiUsage::first()->cost, 2))->toBe(1.08);
+    // Haiku cache: $1.25/M write + $0.10/M read = $1.35
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(1.35);
 });
 
 it('calculates cost correctly for versioned haiku model name', function () {
@@ -100,8 +100,8 @@ it('calculates cost correctly for versioned haiku model name', function () {
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
-    // Same pricing as haiku alias: $0.80/M input + $4.00/M output = $4.80
-    expect(round((float) AiUsage::first()->cost, 2))->toBe(4.80);
+    // Same pricing as haiku alias: $1.00/M input + $5.00/M output = $6.00
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
 });
 
 it('calculates cost correctly for versioned sonnet model name', function () {
