@@ -30,6 +30,7 @@ class ListingForm
                             ->label('Job URL')
                             ->url()
                             ->required()
+                            ->maxLength(2048)
                             ->unique(ignoreRecord: true)
                             ->columnSpanFull(),
                         TextInput::make('salary_min')
