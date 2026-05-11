@@ -97,7 +97,7 @@ it('toggles starred state on pivot', function () {
     expect($pivot->starred_at)->toBeNull();
 });
 
-it('can be shortlisted on pivot', function () {
+it('toggles shortlisted state on pivot', function () {
     $user = login();
     $target = targetFor($user);
     $listing = Listing::factory()->create();
@@ -109,8 +109,63 @@ it('can be shortlisted on pivot', function () {
 
     expect($pivot->shortlisted_at)->toBeNull();
 
-    $pivot->shortlist();
+    $pivot->toggleShortlisted();
     $pivot->refresh();
 
     expect($pivot->shortlisted_at)->toBeInstanceOf(Carbon::class);
+
+    $pivot->toggleShortlisted();
+    $pivot->refresh();
+
+    expect($pivot->shortlisted_at)->toBeNull();
+});
+
+it('toggles dismissed state on pivot', function () {
+    $user = login();
+    $target = targetFor($user);
+    $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $target->id,
+    ]);
+
+    expect($pivot->dismissed_at)->toBeNull();
+
+    $pivot->toggleDismissed();
+    $pivot->refresh();
+
+    expect($pivot->dismissed_at)->toBeInstanceOf(Carbon::class);
+
+    $pivot->toggleDismissed();
+    $pivot->refresh();
+
+    expect($pivot->dismissed_at)->toBeNull();
+});
+
+it('toggles shortlisted across all of the user pivots for the listing', function () {
+    $user = login();
+    $targetA = targetFor($user, ['name' => 'Backend roles']);
+    $targetB = targetFor($user, ['name' => 'Lead roles']);
+    $listing = Listing::factory()->create();
+    $pivotA = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $targetA->id,
+    ]);
+    $pivotB = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $targetB->id,
+    ]);
+
+    $pivotA->toggleShortlisted();
+
+    expect($pivotA->fresh()->shortlisted_at)->not->toBeNull()
+        ->and($pivotB->fresh()->shortlisted_at)->not->toBeNull();
+
+    $pivotB->refresh()->toggleShortlisted();
+
+    expect($pivotA->fresh()->shortlisted_at)->toBeNull()
+        ->and($pivotB->fresh()->shortlisted_at)->toBeNull();
 });

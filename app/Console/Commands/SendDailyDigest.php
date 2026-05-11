@@ -61,6 +61,7 @@ class SendDailyDigest extends Command
         $scoredPivots = ListingUser::query()
             ->where('user_id', $user->id)
             ->whereNotNull('relevance')
+            ->whereNull('dismissed_at')
             ->where('scored_at', '>=', $since)
             ->orderByRaw(ListingUser::orderByRelevanceSql())
             ->orderByDesc('scored_at')
@@ -94,11 +95,14 @@ class SendDailyDigest extends Command
         $shortlistedWithoutApplications = ListingUser::query()
             ->where('user_id', $user->id)
             ->whereNotNull('shortlisted_at')
+            ->whereNull('dismissed_at')
             ->where('shortlisted_at', '>=', $since)
             ->with('listing')
             ->whereDoesntHave('listing.applications', fn ($q) => $q->where('user_id', $user->id))
             ->latest('shortlisted_at')
             ->get()
+            ->unique('listing_id')
+            ->values()
             ->pluck('listing');
 
         $stats = [
@@ -123,6 +127,7 @@ class SendDailyDigest extends Command
     {
         return ListingUser::query()
             ->where('user_id', $user->id)
+            ->whereNull('dismissed_at')
             ->where('created_at', '>=', $since)
             ->distinct('listing_id')
             ->count('listing_id');
@@ -132,6 +137,7 @@ class SendDailyDigest extends Command
     {
         return ListingUser::query()
             ->where('user_id', $user->id)
+            ->whereNull('dismissed_at')
             ->where('relevance', $relevance)
             ->where('scored_at', '>=', $since)
             ->distinct('listing_id')

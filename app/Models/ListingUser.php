@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $read_at
  * @property Carbon|null $starred_at
  * @property Carbon|null $shortlisted_at
+ * @property Carbon|null $dismissed_at
  */
 class ListingUser extends Pivot
 {
@@ -38,6 +39,7 @@ class ListingUser extends Pivot
         'read_at',
         'starred_at',
         'shortlisted_at',
+        'dismissed_at',
     ];
 
     /**
@@ -74,9 +76,14 @@ class ListingUser extends Pivot
         $this->updateAllForListingUser(['starred_at' => $this->starred_at ? null : now()]);
     }
 
-    public function shortlist(): void
+    public function toggleShortlisted(): void
     {
-        $this->updateAllForListingUser(['shortlisted_at' => now()]);
+        $this->updateAllForListingUser(['shortlisted_at' => $this->shortlisted_at ? null : now()]);
+    }
+
+    public function toggleDismissed(): void
+    {
+        $this->updateAllForListingUser(['dismissed_at' => $this->dismissed_at ? null : now()]);
     }
 
     public static function forUserListing(int $userId, string $listingId): ?static
@@ -121,6 +128,7 @@ class ListingUser extends Pivot
             'read_at' => 'datetime',
             'starred_at' => 'datetime',
             'shortlisted_at' => 'datetime',
+            'dismissed_at' => 'datetime',
         ];
     }
 }

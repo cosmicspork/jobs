@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $read_at
  * @property Carbon|null $starred_at
  * @property Carbon|null $shortlisted_at
+ * @property Carbon|null $dismissed_at
  * @property string|null $target_profile_id
  * @property string|null $target_name
  * @property int $applications_count
@@ -43,6 +44,7 @@ class Listing extends Model
         'board',
         'raw_data',
         'scraped_at',
+        'created_by_user_id',
     ];
 
     /**
@@ -54,7 +56,7 @@ class Listing extends Model
             ->using(ListingUser::class)
             ->withPivot([
                 'id', 'relevance', 'score_data', 'scored_at',
-                'read_at', 'starred_at', 'shortlisted_at',
+                'read_at', 'starred_at', 'shortlisted_at', 'dismissed_at',
             ])
             ->withTimestamps();
     }
@@ -89,6 +91,13 @@ class Listing extends Model
             'raw_data' => 'array',
             'remote' => 'boolean',
             'scraped_at' => 'datetime',
+            'relevance' => Relevance::class,
+            'scored_at' => 'datetime',
+            'read_at' => 'datetime',
+            'starred_at' => 'datetime',
+            'shortlisted_at' => 'datetime',
+            'dismissed_at' => 'datetime',
+            'score_data' => 'array',
         ];
     }
 }

@@ -158,6 +158,67 @@ it('includes shortlisted listings without applications', function () {
     });
 });
 
+it('dedupes shortlisted listings to one row per listing across multiple target pivots', function () {
+    $secondTarget = $this->user->targetProfiles()->create([
+        'name' => 'Lead roles',
+        'is_active' => true,
+    ]);
+
+    $shortlisted = Listing::factory()->create();
+
+    foreach ([$this->target->id, $secondTarget->id] as $targetId) {
+        ListingUser::create([
+            'listing_id' => $shortlisted->id,
+            'user_id' => $this->user->id,
+            'target_profile_id' => $targetId,
+            'relevance' => Relevance::Relevant,
+            'scored_at' => now(),
+            'shortlisted_at' => now(),
+        ]);
+    }
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) use ($shortlisted) {
+        return $mail->shortlistedWithoutApplications->count() === 1
+            && $mail->shortlistedWithoutApplications->first()->id === $shortlisted->id;
+    });
+});
+
+it('excludes dismissed listings from relevant, shortlisted, and screened sections', function () {
+    $dismissed = Listing::factory()->create(['title' => 'Dismissed Job']);
+    ListingUser::create([
+        'listing_id' => $dismissed->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+        'shortlisted_at' => now(),
+        'dismissed_at' => now(),
+    ]);
+
+    $live = Listing::factory()->create(['title' => 'Live Job']);
+    ListingUser::create([
+        'listing_id' => $live->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+        'shortlisted_at' => now(),
+    ]);
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) use ($live) {
+        return $mail->relevantListings->count() === 1
+            && $mail->relevantListings->first()->id === $live->id
+            && $mail->shortlistedWithoutApplications->count() === 1
+            && $mail->shortlistedWithoutApplications->first()->id === $live->id
+            && $mail->stats['screened_24h'] === 1
+            && $mail->stats['relevant_7d'] === 1;
+    });
+});
+
 function createPivotAt(Carbon $createdAt, int $userId, string $targetId, ?Relevance $relevance = null): void
 {
     $pivot = ListingUser::create([

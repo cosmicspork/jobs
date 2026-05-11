@@ -21,6 +21,7 @@ class ListingStats extends StatsOverviewWidget
         // Collapse multi-target pivots to one row per listing using best-relevance.
         $bestPerListing = DB::table('listing_user')
             ->where('user_id', $userId)
+            ->whereNull('dismissed_at')
             ->selectRaw('listing_id')
             ->selectRaw('MIN('.ListingUser::orderByRelevanceSql().') as rank')
             ->selectRaw('MIN(listing_user.created_at) as first_seen')
