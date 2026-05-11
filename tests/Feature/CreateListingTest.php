@@ -42,6 +42,7 @@ it('creates a listing with sane defaults and a pivot for each active target', fu
         'url' => 'https://example.com/jobs/123',
         'board' => 'manual',
         'remote' => true,
+        'created_by_user_id' => $this->user->id,
     ]);
 
     $listing = Listing::where('title', 'Senior Engineer')->firstOrFail();

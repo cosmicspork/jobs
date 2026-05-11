@@ -139,6 +139,29 @@ it('handles an empty scrape gracefully', function () {
         ->and(ListingUser::count())->toBe(0);
 });
 
+it('preserves created_by_user_id on a manually-created listing when re-scraped', function () {
+    $author = User::factory()->create();
+    $manual = Listing::factory()->create([
+        'url' => 'https://example.com/manual-job',
+        'title' => 'Manual Title',
+        'company' => 'Manual Co',
+        'board' => 'manual',
+        'created_by_user_id' => $author->id,
+    ]);
+
+    StubScraper::$rows = [
+        stubRow(['url' => 'https://example.com/manual-job', 'title' => 'Scraper Title', 'company' => 'Scraper Co']),
+    ];
+
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+
+    $manual->refresh();
+    expect($manual->created_by_user_id)->toBe($author->id)
+        ->and($manual->title)->toBe('Scraper Title')
+        ->and(Listing::count())->toBe(1)
+        ->and(ListingUser::count())->toBe(0);
+});
+
 it('encodes raw_data so it round-trips through the array cast', function () {
     StubScraper::$rows = [
         stubRow([

@@ -8,14 +8,15 @@ use App\Models\ListingUser;
 use App\Models\TargetProfile;
 use App\Relevance;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ListingsTable
@@ -51,6 +52,7 @@ class ListingsTable
                         'listing_user.read_at',
                         'listing_user.starred_at',
                         'listing_user.shortlisted_at',
+                        'listing_user.dismissed_at',
                         'listing_user.target_profile_id',
                         'target_profiles.name as target_name',
                     ]);
@@ -67,8 +69,14 @@ class ListingsTable
                     ->grow(false),
                 IconColumn::make('shortlisted_at')
                     ->label('Shortlisted')
-                    ->icon(fn (Listing $record): ?string => $record->shortlisted_at ? 'heroicon-s-clipboard-document-check' : null)
-                    ->color('success')
+                    ->state(fn (Listing $record): bool => (bool) $record->shortlisted_at)
+                    ->icon(fn (Listing $record): string => $record->shortlisted_at
+                        ? 'heroicon-s-clipboard-document-check'
+                        : 'heroicon-o-clipboard-document-check')
+                    ->color(fn (Listing $record): string => $record->shortlisted_at ? 'success' : 'gray')
+                    ->action(function (Listing $record): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->toggleShortlisted();
+                    })
                     ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['all'])),
                 IconColumn::make('applications_count')
                     ->label('Applied')
@@ -117,6 +125,13 @@ class ListingsTable
                         true: fn ($query) => $query->whereNotNull('listing_user.starred_at'),
                         false: fn ($query) => $query->whereNull('listing_user.starred_at'),
                     ),
+                TernaryFilter::make('dismissed')
+                    ->label('Dismissed')
+                    ->default(false)
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('listing_user.dismissed_at'),
+                        false: fn ($query) => $query->whereNull('listing_user.dismissed_at'),
+                    ),
                 SelectFilter::make('board')
                     ->options(fn () => collect(config('boards'))->mapWithKeys(fn ($board, $key) => [$key => $board['name']])),
                 SelectFilter::make('relevance')
@@ -137,6 +152,13 @@ class ListingsTable
                     ->action(function (Listing $record): void {
                         ListingUser::forUserListing(auth()->id(), $record->id)?->toggleRead();
                     }),
+                Action::make('toggleDismissed')
+                    ->label(fn (Listing $record): string => $record->dismissed_at ? 'Restore' : 'Dismiss')
+                    ->icon(fn (Listing $record): string => $record->dismissed_at ? 'heroicon-o-arrow-uturn-left' : 'heroicon-o-archive-box-x-mark')
+                    ->color(fn (Listing $record): string => $record->dismissed_at ? 'gray' : 'danger')
+                    ->action(function (Listing $record): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->toggleDismissed();
+                    }),
                 ViewAction::make(),
             ])
             ->toolbarActions([
@@ -151,7 +173,18 @@ class ListingsTable
                             ->update(['read_at' => now()]);
                     }),
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    BulkAction::make('dismiss')
+                        ->label('Dismiss')
+                        ->icon('heroicon-o-archive-box-x-mark')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            ListingUser::query()
+                                ->whereIn('listing_id', $records->pluck('id'))
+                                ->where('user_id', auth()->id())
+                                ->update(['dismissed_at' => now()]);
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ])
             ->recordUrl(fn (Listing $record): string => route('filament.admin.resources.listings.view', $record));
