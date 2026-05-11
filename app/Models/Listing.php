@@ -37,6 +37,7 @@ class Listing extends Model
         'title',
         'company',
         'url',
+        'source_url',
         'description',
         'salary_min',
         'salary_max',

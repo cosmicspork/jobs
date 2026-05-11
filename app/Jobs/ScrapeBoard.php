@@ -36,10 +36,10 @@ class ScrapeBoard implements ShouldQueue
         }
 
         $now = now();
-        $existingUrls = array_flip(
+        $existingSourceUrls = array_flip(
             Listing::query()
-                ->whereIn('url', array_column($rows, 'url'))
-                ->pluck('url')
+                ->whereIn('source_url', array_column($rows, 'source_url'))
+                ->pluck('source_url')
                 ->all()
         );
 
@@ -51,7 +51,7 @@ class ScrapeBoard implements ShouldQueue
         foreach ($rows as $data) {
             $id = (string) Str::ulid();
 
-            if (! isset($existingUrls[$data['url']])) {
+            if (! isset($existingSourceUrls[$data['source_url']])) {
                 $newListingIds[] = $id;
             }
 
@@ -60,6 +60,7 @@ class ScrapeBoard implements ShouldQueue
                 'title' => $data['title'],
                 'company' => $data['company'],
                 'url' => $data['url'],
+                'source_url' => $data['source_url'],
                 'description' => $data['description'],
                 'salary_min' => $data['salary_min'],
                 'salary_max' => $data['salary_max'],
@@ -72,8 +73,8 @@ class ScrapeBoard implements ShouldQueue
             ];
         }
 
-        Listing::query()->upsert($payload, ['url'], [
-            'title', 'company', 'description', 'salary_min', 'salary_max',
+        Listing::query()->upsert($payload, ['source_url'], [
+            'title', 'company', 'url', 'description', 'salary_min', 'salary_max',
             'remote', 'board', 'raw_data', 'scraped_at', 'updated_at',
         ]);
 

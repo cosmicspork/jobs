@@ -17,7 +17,7 @@ class HnHiringScraper implements ScraperInterface
     protected int $hitsPerPage = 1000;
 
     /**
-     * @return Generator<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
+     * @return Generator<int, array{title: string, company: string, url: string, source_url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
      */
     public function scrape(): Generator
     {
@@ -88,7 +88,7 @@ class HnHiringScraper implements ScraperInterface
 
     /**
      * @param  array<string, mixed>  $hit
-     * @return array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}|null
+     * @return array{title: string, company: string, url: string, source_url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}|null
      */
     protected function parseHit(array $hit, int $storyId): ?array
     {
@@ -98,6 +98,9 @@ class HnHiringScraper implements ScraperInterface
         if ($hnId === '' || $commentHtml === '') {
             return null;
         }
+
+        $sourceUrl = "https://news.ycombinator.com/item?id={$hnId}";
+        $applyUrl = $this->extractApplyTarget($commentHtml, $sourceUrl);
 
         $text = $this->htmlToText($commentHtml);
 
@@ -126,7 +129,8 @@ class HnHiringScraper implements ScraperInterface
         return [
             'title' => Str::limit($title, 200),
             'company' => Str::limit($company, 100),
-            'url' => "https://news.ycombinator.com/item?id={$hnId}",
+            'url' => $applyUrl,
+            'source_url' => $sourceUrl,
             'description' => $text,
             'salary_min' => $salary['min'],
             'salary_max' => $salary['max'],
@@ -138,6 +142,53 @@ class HnHiringScraper implements ScraperInterface
                 'created_at' => (string) ($hit['created_at'] ?? ''),
             ],
         ];
+    }
+
+    /**
+     * Pick the most plausible "apply here" link from a HN hiring comment.
+     * Prefers anchors whose href or text contains apply-keywords; skips social
+     * and HN self-links; falls back to first email as mailto: then to $fallback.
+     */
+    protected function extractApplyTarget(string $html, string $fallback): string
+    {
+        $applyKeywords = ['apply', 'careers', 'jobs', 'hiring', 'join', 'work-with-us'];
+        $blockedHosts = [
+            'twitter.com', 'x.com', 'linkedin.com', 'facebook.com',
+            'github.com', 'news.ycombinator.com', 'ycombinator.com',
+        ];
+
+        if (preg_match_all('/<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/i', $html, $matches, PREG_SET_ORDER)) {
+            $candidates = [];
+            foreach ($matches as $m) {
+                $href = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5);
+
+                if (! Str::startsWith($href, ['http://', 'https://'])) {
+                    continue;
+                }
+
+                if (Str::contains($href, $blockedHosts, true)) {
+                    continue;
+                }
+
+                $haystack = strtolower($href.' '.strip_tags($m[2]));
+                $candidates[] = [
+                    'href' => $href,
+                    'score' => Str::contains($haystack, $applyKeywords) ? 2 : 1,
+                ];
+            }
+
+            if ($candidates !== []) {
+                usort($candidates, fn (array $a, array $b): int => $b['score'] <=> $a['score']);
+
+                return $candidates[0]['href'];
+            }
+        }
+
+        if (preg_match('/[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}/', strip_tags($html), $em)) {
+            return 'mailto:'.$em[0];
+        }
+
+        return $fallback;
     }
 
     protected function htmlToText(string $html): string

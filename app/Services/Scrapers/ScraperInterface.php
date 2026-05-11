@@ -11,6 +11,7 @@ interface ScraperInterface
      *     title: string,
      *     company: string,
      *     url: string,
+     *     source_url: string,
      *     description: string,
      *     salary_min: int|null,
      *     salary_max: int|null,
