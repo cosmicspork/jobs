@@ -36,7 +36,7 @@ class CreateListing extends CreateRecord
         $data['board'] ??= 'manual';
         $data['scraped_at'] ??= now();
         $data['created_by_user_id'] = auth()->id();
-        $data['source_url'] = $data['source_url'] ?? $data['url'];
+        $data['source_url'] ??= $data['url'];
 
         return $data;
     }
