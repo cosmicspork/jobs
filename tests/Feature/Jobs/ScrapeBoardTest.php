@@ -22,7 +22,7 @@ class StubScraper implements ScraperInterface
 
 function stubRow(array $overrides = []): array
 {
-    return [
+    $defaults = [
         'title' => 'Senior Engineer',
         'company' => 'Acme Corp',
         'url' => 'https://example.com/job/'.fake()->unique()->uuid(),
@@ -31,8 +31,12 @@ function stubRow(array $overrides = []): array
         'salary_max' => 200000,
         'remote' => true,
         'raw_data' => ['source' => 'test'],
-        ...$overrides,
     ];
+
+    $row = [...$defaults, ...$overrides];
+    $row['source_url'] ??= $row['url'];
+
+    return $row;
 }
 
 beforeEach(function () {
@@ -151,4 +155,31 @@ it('encodes raw_data so it round-trips through the array cast', function () {
 
     $listing = Listing::where('url', 'https://example.com/raw')->first();
     expect($listing->raw_data)->toBe(['hn_id' => '12345', 'author' => 'someone', 'nested' => ['a' => 1]]);
+});
+
+it('dedups by source_url even when apply url changes between scrapes', function () {
+    StubScraper::$rows = [
+        stubRow([
+            'url' => 'https://news.ycombinator.com/item?id=99',
+            'source_url' => 'https://news.ycombinator.com/item?id=99',
+            'title' => 'First Pass',
+        ]),
+    ];
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+    $listingId = Listing::sole()->id;
+
+    StubScraper::$rows = [
+        stubRow([
+            'url' => 'https://acme.com/apply',
+            'source_url' => 'https://news.ycombinator.com/item?id=99',
+            'title' => 'Second Pass',
+        ]),
+    ];
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+
+    $listing = Listing::sole();
+    expect($listing->id)->toBe($listingId)
+        ->and($listing->title)->toBe('Second Pass')
+        ->and($listing->url)->toBe('https://acme.com/apply')
+        ->and($listing->source_url)->toBe('https://news.ycombinator.com/item?id=99');
 });

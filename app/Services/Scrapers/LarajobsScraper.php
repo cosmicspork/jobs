@@ -13,7 +13,7 @@ class LarajobsScraper implements ScraperInterface
     protected string $feedUrl = 'https://larajobs.com/feed';
 
     /**
-     * @return Generator<int, array{title: string, company: string, url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
+     * @return Generator<int, array{title: string, company: string, url: string, source_url: string, description: string, salary_min: int|null, salary_max: int|null, remote: bool, raw_data: array<string, mixed>}>
      */
     public function scrape(): Generator
     {
@@ -63,6 +63,7 @@ class LarajobsScraper implements ScraperInterface
                 'title' => $title,
                 'company' => $company,
                 'url' => $link,
+                'source_url' => $link,
                 'description' => $description,
                 'salary_min' => $salary['min'],
                 'salary_max' => $salary['max'],

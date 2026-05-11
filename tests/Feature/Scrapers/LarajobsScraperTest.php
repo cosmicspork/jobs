@@ -43,6 +43,7 @@ XML),
         ->and($listings[0]['title'])->toBe('Senior Laravel Developer')
         ->and($listings[0]['company'])->toBe('Acme Corp')
         ->and($listings[0]['url'])->toBe('https://larajobs.com/job/123')
+        ->and($listings[0]['source_url'])->toBe('https://larajobs.com/job/123')
         ->and($listings[0]['remote'])->toBeTrue()
         ->and($listings[0]['salary_min'])->toBe(120000)
         ->and($listings[0]['salary_max'])->toBe(180000)

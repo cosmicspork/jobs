@@ -39,6 +39,11 @@ class ListingInfolist
                             ->label('Job URL')
                             ->url(fn (?string $state): ?string => $state)
                             ->openUrlInNewTab(),
+                        TextEntry::make('source_url')
+                            ->label('Source')
+                            ->url(fn (?string $state): ?string => $state)
+                            ->openUrlInNewTab()
+                            ->visible(fn (Listing $record): bool => filled($record->source_url) && $record->source_url !== $record->url),
                         TextEntry::make('description')
                             ->columnSpanFull()
                             ->html()

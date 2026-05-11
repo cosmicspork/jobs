@@ -67,6 +67,7 @@ it('parses hn hiring comments from algolia into listings', function () {
         ->and($listings[0]['salary_min'])->toBe(150000)
         ->and($listings[0]['salary_max'])->toBe(200000)
         ->and($listings[0]['url'])->toBe('https://news.ycombinator.com/item?id=100')
+        ->and($listings[0]['source_url'])->toBe('https://news.ycombinator.com/item?id=100')
         ->and($listings[0]['raw_data']['hn_id'])->toBe('100')
         ->and($listings[0]['raw_data']['story_id'])->toBe(999)
         ->and($listings[0]['raw_data']['author'])->toBe('someone')
@@ -101,7 +102,9 @@ it('decodes html entities and tags in comment bodies', function () {
     expect($listings)->toHaveCount(1)
         ->and($listings[0]['company'])->toBe('Acme & Co')
         ->and($listings[0]['description'])->toContain('acme.example/careers')
-        ->and($listings[0]['description'])->not->toContain('<a href');
+        ->and($listings[0]['description'])->not->toContain('<a href')
+        ->and($listings[0]['url'])->toBe('https://acme.example')
+        ->and($listings[0]['source_url'])->toBe('https://news.ycombinator.com/item?id=100');
 });
 
 it('paginates through multiple pages of comments', function () {
@@ -225,4 +228,96 @@ it('skips comments that are too short or missing text', function () {
 
     expect($listings)->toHaveCount(1)
         ->and($listings[0]['company'])->toBe('Acme');
+});
+
+it('extracts the first non-social http link as url when present', function () {
+    fakeAlgolia(
+        story: ['objectID' => '999', 'title' => 'Ask HN: Who is hiring? (March 2026)'],
+        commentPages: [[
+            'hits' => [[
+                'objectID' => '100',
+                'comment_text' => 'Acme | Engineer | Remote<p>Visit <a href="https://acme.example/about">our site</a> for details.',
+            ]],
+            'nbPages' => 1,
+        ]],
+    );
+
+    $listings = iterator_to_array((new HnHiringScraper)->scrape());
+
+    expect($listings[0]['url'])->toBe('https://acme.example/about')
+        ->and($listings[0]['source_url'])->toBe('https://news.ycombinator.com/item?id=100');
+});
+
+it('prefers anchors with apply or careers keywords over generic links', function () {
+    fakeAlgolia(
+        story: ['objectID' => '999', 'title' => 'Ask HN: Who is hiring? (March 2026)'],
+        commentPages: [[
+            'hits' => [[
+                'objectID' => '100',
+                'comment_text' => 'Acme | Engineer | Remote<p>About: <a href="https://acme.example">homepage</a>.<p>Apply: <a href="https://acme.example/careers">careers page</a>.',
+            ]],
+            'nbPages' => 1,
+        ]],
+    );
+
+    $listings = iterator_to_array((new HnHiringScraper)->scrape());
+
+    expect($listings[0]['url'])->toBe('https://acme.example/careers');
+});
+
+it('falls back to mailto when only an email is present', function () {
+    fakeAlgolia(
+        story: ['objectID' => '999', 'title' => 'Ask HN: Who is hiring? (March 2026)'],
+        commentPages: [[
+            'hits' => [[
+                'objectID' => '100',
+                'comment_text' => 'Acme | Engineer | Remote<p>Email jobs@acme.example to apply.',
+            ]],
+            'nbPages' => 1,
+        ]],
+    );
+
+    $listings = iterator_to_array((new HnHiringScraper)->scrape());
+
+    expect($listings[0]['url'])->toBe('mailto:jobs@acme.example')
+        ->and($listings[0]['source_url'])->toBe('https://news.ycombinator.com/item?id=100');
+});
+
+it('falls back to the hn comment url when no links or emails exist', function () {
+    fakeAlgolia(
+        story: ['objectID' => '999', 'title' => 'Ask HN: Who is hiring? (March 2026)'],
+        commentPages: [[
+            'hits' => [[
+                'objectID' => '100',
+                'comment_text' => 'Acme | Engineer | Remote<p>We are hiring. Reply here for details.',
+            ]],
+            'nbPages' => 1,
+        ]],
+    );
+
+    $listings = iterator_to_array((new HnHiringScraper)->scrape());
+
+    expect($listings[0]['url'])->toBe('https://news.ycombinator.com/item?id=100')
+        ->and($listings[0]['source_url'])->toBe('https://news.ycombinator.com/item?id=100');
+});
+
+it('skips twitter linkedin and hn self-links', function () {
+    fakeAlgolia(
+        story: ['objectID' => '999', 'title' => 'Ask HN: Who is hiring? (March 2026)'],
+        commentPages: [[
+            'hits' => [[
+                'objectID' => '100',
+                'comment_text' => 'Acme | Engineer | Remote'
+                    .'<p>Follow us on <a href="https://twitter.com/acme">Twitter</a>'
+                    .' and <a href="https://www.linkedin.com/company/acme">LinkedIn</a>.'
+                    .'<p>See our <a href="https://news.ycombinator.com/user?id=acmehq">profile</a>.'
+                    .'<p>Apply: <a href="https://acme.example/jobs">acme.example/jobs</a>.',
+            ]],
+            'nbPages' => 1,
+        ]],
+    );
+
+    $listings = iterator_to_array((new HnHiringScraper)->scrape());
+
+    expect($listings[0]['url'])->toBe('https://acme.example/jobs');
 });

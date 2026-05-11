@@ -21,6 +21,7 @@ class ListingFactory extends Factory
             'title' => fake()->jobTitle(),
             'company' => fake()->company(),
             'url' => fake()->unique()->url(),
+            'source_url' => fn (array $attrs) => $attrs['url'],
             'description' => fake()->paragraphs(3, true),
             'salary_min' => fake()->optional()->numberBetween(80000, 120000),
             'salary_max' => fake()->optional()->numberBetween(120000, 200000),
