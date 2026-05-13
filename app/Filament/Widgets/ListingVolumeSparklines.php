@@ -17,6 +17,8 @@ class ListingVolumeSparklines extends StatsOverviewWidget
     private const BOARDS = [
         'hn' => ['label' => 'Hacker News', 'color' => 'warning'],
         'larajobs' => ['label' => 'Larajobs', 'color' => 'info'],
+        'remoteok' => ['label' => 'RemoteOK', 'color' => 'primary'],
+        'wwr' => ['label' => 'We Work Remotely', 'color' => 'success'],
     ];
 
     protected function getStats(): array
