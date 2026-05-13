@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\DB;
  * @property bool $digest_enabled
  * @property string $digest_time
  * @property string $timezone
+ * @property string|null $monthly_ai_cap_usd
  */
 class User extends Authenticatable implements FilamentUser
 {
@@ -49,6 +50,7 @@ class User extends Authenticatable implements FilamentUser
         'digest_enabled',
         'digest_time',
         'timezone',
+        'monthly_ai_cap_usd',
     ];
 
     protected $hidden = [
@@ -338,6 +340,7 @@ class User extends Authenticatable implements FilamentUser
             'prompts' => 'array',
             'is_admin' => 'boolean',
             'digest_enabled' => 'boolean',
+            'monthly_ai_cap_usd' => 'decimal:2',
         ];
     }
 }

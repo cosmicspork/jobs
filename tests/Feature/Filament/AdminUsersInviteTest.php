@@ -86,6 +86,7 @@ it('lets admin edit a users core fields and target criteria', function () {
             'digest_enabled' => true,
             'digest_time' => '08:00',
             'timezone' => 'America/Chicago',
+            'monthly_ai_cap_usd' => '12.50',
         ])
         ->assertNotified();
 
@@ -95,6 +96,49 @@ it('lets admin edit a users core fields and target criteria', function () {
     expect($editee->name)->toBe('Updated Name')
         ->and($editee->email)->toBe('new@example.com')
         ->and($editee->is_admin)->toBeTrue()
+        ->and((float) $editee->monthly_ai_cap_usd)->toBe(12.50)
         ->and($existingTarget->name)->toBe('Updated Target')
         ->and($existingTarget->criteria['salary_min'])->toBe(200000);
+});
+
+it('clears the per-user AI cap when the field is left blank', function () {
+    $editee = User::factory()->ic()->create([
+        'email' => 'capped@example.com',
+        'monthly_ai_cap_usd' => 20.00,
+    ]);
+    $existingTarget = $editee->targetProfiles()->first();
+
+    Livewire::test(AdminUsers::class)
+        ->callTableAction('edit', $editee, data: [
+            'name' => $editee->name,
+            'email' => $editee->email,
+            'is_admin' => $editee->is_admin,
+            'summary' => $editee->summary ?? '',
+            'skills' => $editee->skills ?? [],
+            'experience' => $editee->experience ?? [],
+            'education' => $editee->education ?? [],
+            'targets' => [
+                [
+                    'id' => $existingTarget->id,
+                    'name' => $existingTarget->name,
+                    'positioning' => $existingTarget->positioning,
+                    'target_titles' => $existingTarget->target_titles,
+                    'is_active' => $existingTarget->is_active,
+                    'sort_order' => $existingTarget->sort_order,
+                    'remote' => $existingTarget->criteria['remote'] ?? true,
+                    'salary_min' => $existingTarget->criteria['salary_min'] ?? null,
+                    'locations' => $existingTarget->criteria['locations'] ?? [],
+                    'must_have_keywords' => $existingTarget->criteria['must_have_keywords'] ?? [],
+                    'avoid_keywords' => $existingTarget->criteria['avoid_keywords'] ?? [],
+                ],
+            ],
+            'boards' => [],
+            'digest_enabled' => $editee->digest_enabled,
+            'digest_time' => $editee->digest_time,
+            'timezone' => $editee->timezone,
+            'monthly_ai_cap_usd' => '',
+        ])
+        ->assertNotified();
+
+    expect($editee->refresh()->monthly_ai_cap_usd)->toBeNull();
 });

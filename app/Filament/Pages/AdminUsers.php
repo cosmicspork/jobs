@@ -134,6 +134,7 @@ class AdminUsers extends Page implements HasTable
                 'digest_enabled' => $record->digest_enabled,
                 'digest_time' => $record->digest_time,
                 'timezone' => $record->timezone,
+                'monthly_ai_cap_usd' => $record->monthly_ai_cap_usd,
             ])
             ->schema([
                 Section::make('Account')
@@ -249,6 +250,18 @@ class AdminUsers extends Page implements HasTable
                             ->searchable()
                             ->columnSpan(2),
                     ]),
+                Section::make('AI usage')
+                    ->collapsible()
+                    ->collapsed()
+                    ->schema([
+                        TextInput::make('monthly_ai_cap_usd')
+                            ->label('Monthly AI cap (USD)')
+                            ->numeric()
+                            ->prefix('$')
+                            ->step('0.01')
+                            ->placeholder('Default: $'.number_format((float) config('scoring.monthly_cap_usd'), 2))
+                            ->helperText('Leave blank to use the system default.'),
+                    ]),
             ])
             ->action(function (array $data, User $record): void {
                 $record->update([
@@ -263,6 +276,7 @@ class AdminUsers extends Page implements HasTable
                     'digest_enabled' => $data['digest_enabled'] ?? false,
                     'digest_time' => $data['digest_time'] ?? '08:00',
                     'timezone' => $data['timezone'] ?? 'America/Chicago',
+                    'monthly_ai_cap_usd' => filled($data['monthly_ai_cap_usd'] ?? null) ? $data['monthly_ai_cap_usd'] : null,
                 ]);
 
                 $record->syncTargetProfiles($data['targets'] ?? []);

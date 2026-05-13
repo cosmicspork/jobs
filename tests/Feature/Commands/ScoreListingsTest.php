@@ -162,3 +162,55 @@ it('skips dispatch and emails admin when user has hit the monthly AI cap', funct
     Queue::assertNothingPushed();
     Mail::assertSent(UserCapReached::class);
 });
+
+it('uses the per-user cap override when set, ignoring the global config', function () {
+    Queue::fake();
+    Mail::fake();
+    config(['scoring.monthly_cap_usd' => 1.0]);
+    config(['scoring.admin_alert_email' => 'admin@example.com']);
+
+    $this->user->update(['monthly_ai_cap_usd' => 10.00]);
+
+    AiUsage::factory()->create([
+        'user_id' => $this->user->id,
+        'cost' => 6.0,
+    ]);
+
+    $listing = Listing::factory()->create(['remote' => true, 'salary_max' => null]);
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+    ]);
+
+    $this->artisan('jobs:score')->assertSuccessful();
+
+    Queue::assertPushed(ScoreListing::class, 1);
+    Mail::assertNothingSent();
+});
+
+it('falls back to the global cap when monthly_ai_cap_usd is null', function () {
+    Queue::fake();
+    Mail::fake();
+    config(['scoring.monthly_cap_usd' => 5.0]);
+    config(['scoring.admin_alert_email' => 'admin@example.com']);
+
+    expect($this->user->monthly_ai_cap_usd)->toBeNull();
+
+    AiUsage::factory()->create([
+        'user_id' => $this->user->id,
+        'cost' => 6.0,
+    ]);
+
+    $listing = Listing::factory()->create(['remote' => true, 'salary_max' => null]);
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+    ]);
+
+    $this->artisan('jobs:score')->assertSuccessful();
+
+    Queue::assertNothingPushed();
+    Mail::assertSent(UserCapReached::class);
+});

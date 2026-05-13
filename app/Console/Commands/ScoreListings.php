@@ -23,7 +23,6 @@ class ScoreListings extends Command
 {
     public function handle(ListingFilter $filter): int
     {
-        $cap = (float) config('scoring.monthly_cap_usd');
         $monthStart = now()->startOfMonth();
 
         /** @var array<int, float> $spendByUser */
@@ -36,14 +35,14 @@ class ScoreListings extends Command
         ListingUser::query()
             ->whereNull('scored_at')
             ->with(['listing', 'user', 'targetProfile'])
-            ->chunkById(100, function ($pivots) use (&$counts, &$spendByUser, &$cappedUsers, $filter, $cap, $monthStart) {
+            ->chunkById(100, function ($pivots) use (&$counts, &$spendByUser, &$cappedUsers, $filter, $monthStart) {
                 foreach ($pivots as $pivot) {
-                    $this->processPivot($pivot, $filter, $cap, $monthStart, $counts, $spendByUser, $cappedUsers);
+                    $this->processPivot($pivot, $filter, $monthStart, $counts, $spendByUser, $cappedUsers);
                 }
             });
 
         foreach ($cappedUsers as $user) {
-            $this->notifyAdminCapReached($user, $spendByUser[$user->id], $cap);
+            $this->notifyAdminCapReached($user, $spendByUser[$user->id], $this->capForUser($user));
         }
 
         if (array_sum($counts) === 0) {
@@ -68,7 +67,6 @@ class ScoreListings extends Command
     protected function processPivot(
         ListingUser $pivot,
         ListingFilter $filter,
-        float $cap,
         Carbon $monthStart,
         array &$counts,
         array &$spendByUser,
@@ -100,7 +98,7 @@ class ScoreListings extends Command
             ->where('created_at', '>=', $monthStart)
             ->sum('cost');
 
-        if ($spendByUser[$user->id] >= $cap) {
+        if ($spendByUser[$user->id] >= $this->capForUser($user)) {
             $counts['skippedCap']++;
             $cappedUsers[$user->id] = $user;
 
@@ -120,6 +118,11 @@ class ScoreListings extends Command
 
         ScoreListing::dispatch($pivot->listing, $target);
         $counts['dispatched']++;
+    }
+
+    protected function capForUser(User $user): float
+    {
+        return (float) ($user->monthly_ai_cap_usd ?? config('scoring.monthly_cap_usd'));
     }
 
     protected function notifyAdminCapReached(User $user, float $spend, float $cap): void
