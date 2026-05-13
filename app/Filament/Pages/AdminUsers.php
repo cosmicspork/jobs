@@ -146,6 +146,8 @@ class AdminUsers extends Page implements HasTable
                     ]),
                 Section::make('About')
                     ->description('Career identity. Keep direction-neutral — career aspirations belong in each target below.')
+                    ->collapsible()
+                    ->collapsed()
                     ->columns(6)
                     ->schema([
                         TextInput::make('experience_years')
@@ -158,11 +160,15 @@ class AdminUsers extends Page implements HasTable
                     ]),
                 Section::make('Skills')
                     ->description('One flat list. Each target picks its own subset at scoring/tailoring time.')
+                    ->collapsible()
+                    ->collapsed()
                     ->schema([
                         TagsInput::make('skills')
                             ->helperText('The resume agent picks 10-12 most relevant per target; the scorer reads the full list.'),
                     ]),
                 Section::make('Experience & education')
+                    ->collapsible()
+                    ->collapsed()
                     ->schema([
                         Repeater::make('experience')
                             ->helperText('Reverse-chronological. Each highlight should be a complete bullet ready for a resume.')
@@ -180,6 +186,8 @@ class AdminUsers extends Page implements HasTable
                     ]),
                 Section::make('Targets')
                     ->description('Career directions. Each target is scored and tailored independently — one per role type.')
+                    ->collapsible()
+                    ->collapsed()
                     ->schema([
                         Repeater::make('targets')
                             ->schema([
@@ -232,6 +240,8 @@ class AdminUsers extends Page implements HasTable
                             ->itemLabel(fn (array $state): string => $state['name'] ?? ''),
                     ]),
                 Section::make('Notifications')
+                    ->collapsible()
+                    ->collapsed()
                     ->columns(6)
                     ->schema([
                         CheckboxList::make('boards')

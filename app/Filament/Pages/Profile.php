@@ -89,6 +89,8 @@ class Profile extends Page
                         ]),
                     Section::make('Skills')
                         ->description('Technical and leadership skills — one flat list. Each target picks the most relevant subset at scoring/tailoring time.')
+                        ->collapsible()
+                        ->collapsed()
                         ->schema([
                             TagsInput::make('skills')
                                 ->placeholder('Add a skill — Laravel, Kubernetes, Mentorship, etc.')
@@ -98,7 +100,7 @@ class Profile extends Page
                     Section::make('Experience & education')
                         ->description('Optional but strongly recommended — resume tailoring is much sharper with structured experience.')
                         ->collapsible()
-                        ->collapsed(fn (): bool => empty(auth()->user()->experience) && empty(auth()->user()->education))
+                        ->collapsed()
                         ->schema([
                             Repeater::make('experience')
                                 ->label('Work history')
@@ -120,6 +122,8 @@ class Profile extends Page
                         ]),
                     Section::make('Targets')
                         ->description('What roles you\'re hunting for. Each target is scored and tailored independently — add one per career direction you\'re open to (e.g. one for management, one for senior IC).')
+                        ->collapsible()
+                        ->collapsed()
                         ->schema([
                             Repeater::make('targets')
                                 ->label('Target profiles')
