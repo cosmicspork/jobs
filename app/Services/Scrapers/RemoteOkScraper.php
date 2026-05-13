@@ -4,6 +4,7 @@ namespace App\Services\Scrapers;
 
 use Generator;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -25,11 +26,16 @@ class RemoteOkScraper implements ScraperInterface
      */
     public function scrape(): Generator
     {
-        $response = Http::withHeaders(['User-Agent' => 'jobs-app/1.0 (+contact)'])
+        $response = Http::withHeaders(['User-Agent' => 'jobs-app/1.0 (contact: 106683649+cosmicspork@users.noreply.github.com)'])
             ->acceptJson()
             ->get($this->endpoint);
 
         if (! $response->ok()) {
+            Log::warning('RemoteOK scrape failed', [
+                'status' => $response->status(),
+                'body_preview' => Str::limit($response->body(), 200),
+            ]);
+
             return;
         }
 

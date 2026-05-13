@@ -2,6 +2,7 @@
 
 use App\Services\Scrapers\RemoteOkScraper;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 function fakeRemoteOk(array $items): void
 {
@@ -139,4 +140,19 @@ it('returns empty on failed http', function () {
     ]);
 
     expect(iterator_to_array((new RemoteOkScraper)->scrape()))->toBeEmpty();
+});
+
+it('logs a warning when RemoteOK rejects the request', function () {
+    Http::fake([
+        'remoteok.com/api' => Http::response('Disable your VPN to access Remote OK', 403),
+    ]);
+
+    Log::spy();
+
+    iterator_to_array((new RemoteOkScraper)->scrape());
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->with('RemoteOK scrape failed', Mockery::on(fn (array $ctx): bool => $ctx['status'] === 403
+            && str_contains($ctx['body_preview'], 'Disable your VPN')));
 });
