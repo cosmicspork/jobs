@@ -4,6 +4,7 @@ use App\Filament\Widgets\AdminOverviewStats;
 use App\Filament\Widgets\PipelineHealth;
 use App\Filament\Widgets\RelevanceByBoardBars;
 use App\Filament\Widgets\ScrapeHealth;
+use App\Models\AiUsage;
 use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Models\User;
@@ -124,6 +125,63 @@ it('flags pipeline health when scoring is dead and pivots are stuck', function (
         ->and(statColor($stats[0]))->toBe('danger')   // unscored stale
         ->and($stats[1]->getValue())->toBe('never')
         ->and(statColor($stats[1]))->toBe('danger');  // last successful score stale
+});
+
+it('downgrades pipeline health severity when all unscored pivots belong to capped users', function () {
+    config(['scoring.monthly_cap_usd' => 5.0]);
+
+    AiUsage::factory()->create([
+        'user_id' => $this->admin->id,
+        'cost' => 5.5,
+    ]);
+
+    $listing = Listing::factory()->create();
+    insertPivot($listing->id, $this->admin->id, $this->target->id, [
+        'created_at' => now()->subHours(2),
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $stats = callGetStats(PipelineHealth::class);
+
+    expect($stats[0]->getValue())->toBe('1')
+        ->and(statColor($stats[0]))->toBe('info')
+        ->and(statDescription($stats[0]))->toContain('paused: 1 over cap')
+        ->and(statColor($stats[1]))->toBe('warning')
+        ->and(statDescription($stats[1]))->toContain('1 user over cap');
+});
+
+it('keeps pipeline health danger severity when at least one unscored pivot is from an under-cap user', function () {
+    config(['scoring.monthly_cap_usd' => 5.0]);
+
+    // Admin is over cap.
+    AiUsage::factory()->create([
+        'user_id' => $this->admin->id,
+        'cost' => 5.5,
+    ]);
+
+    // Second user is under cap.
+    $other = User::factory()->ic()->create();
+    $otherTarget = $other->targetProfiles()->first();
+
+    $listingA = Listing::factory()->create();
+    insertPivot($listingA->id, $this->admin->id, $this->target->id, [
+        'created_at' => now()->subHours(2),
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $listingB = Listing::factory()->create();
+    insertPivot($listingB->id, $other->id, $otherTarget->id, [
+        'created_at' => now()->subHours(2),
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $stats = callGetStats(PipelineHealth::class);
+
+    expect($stats[0]->getValue())->toBe('2')
+        ->and(statColor($stats[0]))->toBe('danger')
+        ->and(statDescription($stats[0]))->not->toContain('paused')
+        ->and(statColor($stats[1]))->toBe('danger')
+        ->and(statDescription($stats[1]))->not->toContain('over cap');
 });
 
 it('shows pipeline health green when scoring is healthy', function () {

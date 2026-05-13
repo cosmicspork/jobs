@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\AiUsage;
 use App\Models\ListingUser;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;
@@ -52,12 +53,22 @@ class PipelineHealth extends StatsOverviewWidget
             ->sum('cost');
         $perUserCap = (float) config('scoring.monthly_cap_usd');
 
+        $cappedUserIds = $this->cappedUserIds($monthStart, $perUserCap);
+        $capBlockedCount = $cappedUserIds === []
+            ? 0
+            : ListingUser::query()
+                ->whereNull('scored_at')
+                ->whereIn('user_id', $cappedUserIds)
+                ->count();
+        $allUnscoredAreCapBlocked = $unscoredCount > 0 && $capBlockedCount === $unscoredCount;
+        $cappedUserCount = count($cappedUserIds);
+        $cappedUserSummary = $cappedUserCount === 1 ? '1 user over cap' : "{$cappedUserCount} users over cap";
+
         return [
             Stat::make('Unscored Pivots', number_format($unscoredCount))
-                ->description($oldestUnscored
-                    ? 'oldest '.$oldestUnscored->diffForHumans()
-                    : 'all caught up')
+                ->description($this->unscoredDescription($oldestUnscored, $allUnscoredAreCapBlocked, $capBlockedCount))
                 ->color(match (true) {
+                    $allUnscoredAreCapBlocked => 'info',
                     $unscoredStale => 'danger',
                     $unscoredCount > 0 => 'warning',
                     default => 'success',
@@ -66,10 +77,12 @@ class PipelineHealth extends StatsOverviewWidget
             Stat::make('Last Successful Score', $lastScoredAt
                     ? $lastScoredAt->diffForHumans(syntax: Carbon::DIFF_RELATIVE_TO_NOW, short: true)
                     : 'never')
-                ->description($lastScoredAt
-                    ? $lastScoredAt->format('M j, H:i')
-                    : 'no scoring runs on record')
-                ->color($scoringStale ? 'danger' : 'success'),
+                ->description($this->lastScoredDescription($lastScoredAt, $allUnscoredAreCapBlocked, $cappedUserSummary))
+                ->color(match (true) {
+                    ! $scoringStale => 'success',
+                    $allUnscoredAreCapBlocked => 'warning',
+                    default => 'danger',
+                }),
 
             Stat::make('Failed Jobs', number_format($failedJobs))
                 ->description($failedJobs > 0 ? 'check failed_jobs table' : 'queue is clean')
@@ -81,5 +94,47 @@ class PipelineHealth extends StatsOverviewWidget
                     : 'no cap configured')
                 ->color('primary'),
         ];
+    }
+
+    private function unscoredDescription(?Carbon $oldestUnscored, bool $allCapBlocked, int $capBlockedCount): string
+    {
+        if ($oldestUnscored === null) {
+            return 'all caught up';
+        }
+
+        $base = 'oldest '.$oldestUnscored->diffForHumans();
+
+        return $allCapBlocked
+            ? "{$base} · paused: {$capBlockedCount} over cap"
+            : $base;
+    }
+
+    private function lastScoredDescription(?Carbon $lastScoredAt, bool $allCapBlocked, string $cappedUserSummary): string
+    {
+        $base = $lastScoredAt
+            ? $lastScoredAt->format('M j, H:i')
+            : 'no scoring runs on record';
+
+        return $allCapBlocked
+            ? "{$base} · {$cappedUserSummary}"
+            : $base;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function cappedUserIds(Carbon $monthStart, float $globalCap): array
+    {
+        return User::query()
+            ->select('users.id', 'users.monthly_ai_cap_usd', DB::raw('COALESCE(SUM(ai_usages.cost), 0) as spend'))
+            ->leftJoin('ai_usages', function ($join) use ($monthStart) {
+                $join->on('ai_usages.user_id', '=', 'users.id')
+                    ->where('ai_usages.created_at', '>=', $monthStart);
+            })
+            ->groupBy('users.id', 'users.monthly_ai_cap_usd')
+            ->get()
+            ->filter(fn ($row): bool => (float) $row->spend >= (float) ($row->monthly_ai_cap_usd ?? $globalCap))
+            ->pluck('id')
+            ->all();
     }
 }
