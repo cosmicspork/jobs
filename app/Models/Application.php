@@ -5,6 +5,8 @@ namespace App\Models;
 use App\ApplicationStatus;
 use App\Jobs\GenerateCoverLetter;
 use App\Jobs\GenerateResume;
+use App\Jobs\MarkApplicationFailed;
+use App\Jobs\MarkApplicationReady;
 use Database\Factories\ApplicationFactory;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -105,8 +107,8 @@ class Application extends Model
         );
 
         Bus::batch($jobs($application))
-            ->then(fn () => $application->update(['status' => ApplicationStatus::Ready]))
-            ->catch(fn () => $application->update(['status' => ApplicationStatus::Failed]))
+            ->then(new MarkApplicationReady($application))
+            ->catch(new MarkApplicationFailed($application))
             ->dispatch();
 
         return $application;

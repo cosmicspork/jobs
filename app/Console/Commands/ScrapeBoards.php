@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\RunJobScoring;
 use App\Jobs\ScrapeBoard;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 
 #[Signature('jobs:scrape')]
@@ -37,7 +37,7 @@ class ScrapeBoards extends Command
 
         Bus::batch($jobs)
             ->name('scrape-boards')
-            ->then(fn () => Artisan::call('jobs:score'))
+            ->then(new RunJobScoring)
             ->dispatch();
 
         $this->info('Dispatched '.count($jobs).' scrape jobs. Scoring will run automatically after scraping completes.');
