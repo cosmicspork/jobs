@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Ai\Agents\ApplicationQuestionsAgent;
+use App\Ai\ProviderFreeze;
 use App\ApplicationQuestionSetStatus;
 use App\Models\ApplicationQuestion;
 use App\Models\ApplicationQuestionSet;
@@ -10,6 +11,7 @@ use App\Models\Listing;
 use App\Models\TargetProfile;
 use App\Models\User;
 use BackedEnum;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -21,6 +23,7 @@ use Filament\Schemas\Components\Form;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Exceptions\AiException;
 
 /**
  * @property-read Schema $form
@@ -190,6 +193,14 @@ class ApplicationQuestions extends Page
         $prompt = $this->buildAgentPrompt($questions, $listingId);
 
         $agent = new ApplicationQuestionsAgent($user, $target);
+        $provider = config('ai.agents.app_questions.provider');
+
+        if ($frozenUntil = ProviderFreeze::providerFrozenUntil($provider)) {
+            $questionSet->update(['status' => ApplicationQuestionSetStatus::Draft]);
+            $this->notifyProviderFrozen($frozenUntil);
+
+            return;
+        }
 
         try {
             $response = $agent->prompt($prompt, provider: $agent->providers() ?: null);
@@ -214,6 +225,22 @@ class ApplicationQuestions extends Page
                 ->title('Review complete')
                 ->success()
                 ->send();
+        } catch (AiException $e) {
+            $questionSet->update(['status' => ApplicationQuestionSetStatus::Draft]);
+
+            if ($until = ProviderFreeze::freezeIfUsageLimited($provider, $e)) {
+                $this->notifyProviderFrozen($until);
+
+                return;
+            }
+
+            Log::error('Application questions review failed', ['exception' => $e]);
+
+            Notification::make()
+                ->title('Review failed')
+                ->body('An error occurred during review. Please try again.')
+                ->danger()
+                ->send();
         } catch (\Exception $e) {
             Log::error('Application questions review failed', ['exception' => $e]);
 
@@ -225,6 +252,15 @@ class ApplicationQuestions extends Page
                 ->danger()
                 ->send();
         }
+    }
+
+    private function notifyProviderFrozen(CarbonImmutable $until): void
+    {
+        Notification::make()
+            ->title('AI provider temporarily unavailable')
+            ->body("Service is unavailable until {$until->toDayDateTimeString()} UTC. Please try again later.")
+            ->danger()
+            ->send();
     }
 
     public function saveFinalAnswers(): void

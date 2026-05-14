@@ -1,12 +1,15 @@
 <?php
 
 use App\Ai\Agents\JobScorerAgent;
+use App\Ai\Events\ProviderFrozen;
+use App\Ai\ProviderFreeze;
 use App\Jobs\ScoreListing;
 use App\Models\AiUsage;
 use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Event;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\AiException;
 
@@ -118,7 +121,7 @@ it('exposes Anthropic prompt-cache control via providerOptions', function () {
 it('short-circuits scoring while the provider is frozen', function () {
     JobScorerAgent::fake()->preventStrayPrompts();
 
-    ScoreListing::freezeProvider(
+    ProviderFreeze::freezeProvider(
         config('ai.agents.scorer.provider'),
         CarbonImmutable::now()->addDay(),
     );
@@ -129,7 +132,9 @@ it('short-circuits scoring while the provider is frozen', function () {
     JobScorerAgent::assertNeverPrompted();
 });
 
-it('freezes the provider when a usage-limit AiException is thrown', function () {
+it('freezes the provider and fires ProviderFrozen when a usage-limit AiException is thrown', function () {
+    Event::fake([ProviderFrozen::class]);
+
     JobScorerAgent::fake(function () {
         throw new AiException(
             'Anthropic Error [400]: invalid_request_error - You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.',
@@ -138,15 +143,20 @@ it('freezes the provider when a usage-limit AiException is thrown', function () 
     });
 
     // $this->fail() is a noop without a queue job, so handle() returns cleanly
-    // and the side-effects (cache freeze + unscored pivot) are what the test verifies.
+    // and the side-effects (cache freeze + unscored pivot + event) are what the test verifies.
     (new ScoreListing($this->listing, $this->target))->handle();
 
-    $frozenUntil = ScoreListing::providerFrozenUntil(config('ai.agents.scorer.provider'));
+    $provider = config('ai.agents.scorer.provider');
+    $frozenUntil = ProviderFreeze::providerFrozenUntil($provider);
 
     expect($frozenUntil)->not->toBeNull()
         ->and($frozenUntil->toDateString())->toBe('2026-06-01')
         ->and($frozenUntil->hour)->toBe(0)
         ->and($this->pivot->fresh()->scored_at)->toBeNull();
+
+    Event::assertDispatched(ProviderFrozen::class, fn (ProviderFrozen $e) => $e->provider === $provider
+        && $e->reason === 'usage_limit'
+        && $e->until->toDateString() === '2026-06-01');
 });
 
 it('rethrows non-usage-limit AiExceptions so existing retry handling fires', function () {
@@ -157,5 +167,5 @@ it('rethrows non-usage-limit AiExceptions so existing retry handling fires', fun
     $job = new ScoreListing($this->listing, $this->target);
 
     expect(fn () => $job->handle())->toThrow(AiException::class);
-    expect(ScoreListing::providerFrozenUntil(config('ai.agents.scorer.provider')))->toBeNull();
+    expect(ProviderFreeze::providerFrozenUntil(config('ai.agents.scorer.provider')))->toBeNull();
 });
