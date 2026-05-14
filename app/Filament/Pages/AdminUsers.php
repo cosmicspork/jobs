@@ -10,6 +10,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Auth\Notifications\ResetPassword as FilamentResetPasswordNotification;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -191,6 +192,7 @@ class AdminUsers extends Page implements HasTable
                     ->schema([
                         Repeater::make('targets')
                             ->schema([
+                                Hidden::make('id'),
                                 Grid::make(6)->schema([
                                     TextInput::make('name')
                                         ->helperText('Short label — appears as a badge in the digest and listings.')

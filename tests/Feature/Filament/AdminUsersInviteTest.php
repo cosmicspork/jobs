@@ -2,7 +2,10 @@
 
 use App\Filament\Pages\AdminUsers;
 use App\Mail\WelcomeUser;
+use App\Models\Listing;
+use App\Models\ListingUser;
 use App\Models\User;
+use App\Relevance;
 use Filament\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -141,4 +144,56 @@ it('clears the per-user AI cap when the field is left blank', function () {
         ->assertNotified();
 
     expect($editee->refresh()->monthly_ai_cap_usd)->toBeNull();
+});
+
+it('admin edit preserves existing target id and listing_user pivots', function () {
+    $editee = User::factory()->ic()->create();
+    $existingTarget = $editee->targetProfiles()->first();
+    $listing = Listing::factory()->create();
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $editee->id,
+        'target_profile_id' => $existingTarget->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+        'starred_at' => now(),
+    ]);
+
+    Livewire::test(AdminUsers::class)
+        ->callTableAction('edit', $editee, data: [
+            'name' => $editee->name,
+            'email' => $editee->email,
+            'is_admin' => $editee->is_admin,
+            'summary' => $editee->summary ?? '',
+            'skills' => $editee->skills ?? [],
+            'experience' => $editee->experience ?? [],
+            'education' => $editee->education ?? [],
+            'targets' => [
+                [
+                    'id' => $existingTarget->id,
+                    'name' => 'Renamed by admin',
+                    'positioning' => $existingTarget->positioning,
+                    'target_titles' => $existingTarget->target_titles,
+                    'is_active' => true,
+                    'sort_order' => $existingTarget->sort_order,
+                    'remote' => $existingTarget->criteria['remote'] ?? true,
+                    'salary_min' => $existingTarget->criteria['salary_min'] ?? null,
+                    'locations' => $existingTarget->criteria['locations'] ?? [],
+                    'must_have_keywords' => $existingTarget->criteria['must_have_keywords'] ?? [],
+                    'avoid_keywords' => $existingTarget->criteria['avoid_keywords'] ?? [],
+                ],
+            ],
+            'boards' => [],
+            'digest_enabled' => $editee->digest_enabled,
+            'digest_time' => $editee->digest_time,
+            'timezone' => $editee->timezone,
+            'monthly_ai_cap_usd' => '',
+        ])
+        ->assertNotified();
+
+    $existingTarget->refresh();
+    expect($existingTarget->name)->toBe('Renamed by admin')
+        ->and($editee->targetProfiles()->where('is_active', true)->count())->toBe(1)
+        ->and(ListingUser::find($pivot->id))->not->toBeNull()
+        ->and(ListingUser::find($pivot->id)->starred_at)->not->toBeNull();
 });

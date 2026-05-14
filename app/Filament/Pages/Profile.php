@@ -11,6 +11,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -136,6 +137,7 @@ class Profile extends Page
                             Repeater::make('targets')
                                 ->label('Target profiles')
                                 ->schema([
+                                    Hidden::make('id'),
                                     Grid::make(6)->schema([
                                         TextInput::make('name')
                                             ->placeholder('e.g. Engineering Manager roles')

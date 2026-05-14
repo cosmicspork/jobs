@@ -3,6 +3,7 @@
 use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Relevance;
+use Illuminate\Database\QueryException;
 
 it('bestTargetFor prefers higher relevance over sort_order', function () {
     $user = login();
@@ -131,4 +132,84 @@ it('bestTargetFor uses sort_order over scored_at when relevance ties', function 
     ]);
 
     expect($user->bestTargetFor($listing)?->id)->toBe($lowSortOrder->id);
+});
+
+it('syncTargetProfiles updates existing rows in place when id is preserved', function () {
+    $user = login();
+    $target = targetFor($user, ['name' => 'Original', 'sort_order' => 0]);
+
+    $user->syncTargetProfiles([
+        [
+            'id' => $target->id,
+            'name' => 'Renamed',
+            'positioning' => 'New positioning.',
+            'target_titles' => ['Staff Engineer'],
+            'is_active' => true,
+            'sort_order' => 5,
+            'remote' => true,
+            'salary_min' => 200000,
+            'locations' => ['Remote'],
+            'must_have_keywords' => [],
+            'avoid_keywords' => [],
+        ],
+    ]);
+
+    $target->refresh();
+    expect($target->name)->toBe('Renamed')
+        ->and($target->sort_order)->toBe(5)
+        ->and($user->targetProfiles()->count())->toBe(1);
+});
+
+it('syncTargetProfiles deactivates missing targets instead of deleting (and preserves pivots)', function () {
+    $user = login();
+    $keptTarget = targetFor($user, ['name' => 'Kept', 'sort_order' => 0]);
+    $droppedTarget = targetFor($user, ['name' => 'Dropped', 'sort_order' => 1]);
+    $listing = Listing::factory()->create();
+
+    $pivot = ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $droppedTarget->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now(),
+        'starred_at' => now(),
+    ]);
+
+    $user->syncTargetProfiles([
+        [
+            'id' => $keptTarget->id,
+            'name' => 'Kept',
+            'positioning' => 'Still here.',
+            'target_titles' => ['Staff Engineer'],
+            'is_active' => true,
+            'sort_order' => 0,
+            'remote' => true,
+            'salary_min' => null,
+            'locations' => [],
+            'must_have_keywords' => [],
+            'avoid_keywords' => [],
+        ],
+    ]);
+
+    $droppedTarget->refresh();
+    expect($droppedTarget->exists)->toBeTrue()
+        ->and($droppedTarget->is_active)->toBeFalse()
+        ->and(ListingUser::find($pivot->id))->not->toBeNull()
+        ->and(ListingUser::find($pivot->id)->starred_at)->not->toBeNull();
+});
+
+it('cannot delete a target_profile that still has listing_user pivots', function () {
+    $user = login();
+    $target = targetFor($user);
+    $listing = Listing::factory()->create();
+
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $user->id,
+        'target_profile_id' => $target->id,
+        'scored_at' => now(),
+    ]);
+
+    expect(fn () => $target->delete())
+        ->toThrow(QueryException::class);
 });

@@ -226,8 +226,9 @@ class User extends Authenticatable implements FilamentUser
 
     /**
      * Persist the target profiles posted from a profile or admin form. Updates
-     * existing rows in place by id, creates new ones, and deletes any not in
-     * the submitted set.
+     * existing rows in place by id, creates new ones, and deactivates any not
+     * in the submitted set (never deletes — `listing_user` pivots reference
+     * targets and carry irreplaceable user history).
      *
      * @param  array<int, array<string, mixed>>  $rows
      */
@@ -265,7 +266,7 @@ class User extends Authenticatable implements FilamentUser
             $keptIds[] = $this->targetProfiles()->create($attrs)->id;
         }
 
-        $this->targetProfiles()->whereNotIn('id', $keptIds)->delete();
+        $this->targetProfiles()->whereNotIn('id', $keptIds)->update(['is_active' => false]);
     }
 
     /**
