@@ -13,11 +13,14 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 
 /**
  * @property User $user
  * @property TargetProfile $targetProfile
+ * @property ApplicationStatus|null $status
+ * @property Carbon|null $applied_at
  */
 class Application extends Model
 {

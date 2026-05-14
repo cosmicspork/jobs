@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\TargetProfile;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -48,29 +49,13 @@ class ProfileImporter
      */
     public function preview(User $user, array $data): array
     {
-        $validated = $this->validate($data);
-        $targets = $validated['target_profiles'] ?? [];
+        $diff = $this->diff($user, $this->validate($data)['target_profiles'] ?? []);
 
-        $existingByKey = $user->targetProfiles()
-            ->get()
-            ->keyBy(fn (TargetProfile $t) => Str::slug($t->name));
-
-        $incomingKeys = [];
-        $added = 0;
-        $updated = 0;
-
-        foreach ($targets as $target) {
-            $key = $target['key'] ?? Str::slug($target['name']);
-            $incomingKeys[] = $key;
-            $existingByKey->has($key) ? $updated++ : $added++;
-        }
-
-        $deactivated = $existingByKey
-            ->filter(fn (TargetProfile $t) => $t->is_active
-                && ! in_array(Str::slug($t->name), $incomingKeys, true))
-            ->count();
-
-        return compact('added', 'updated', 'deactivated');
+        return [
+            'added' => $diff['added'],
+            'updated' => $diff['updated'],
+            'deactivated' => $diff['toDeactivate']->count(),
+        ];
     }
 
     /**
@@ -114,6 +99,55 @@ class ProfileImporter
      */
     protected function upsertTargets(User $user, array $targets): array
     {
+        $diff = $this->diff($user, $targets);
+
+        foreach ($targets as $row) {
+            $key = $row['key'] ?? Str::slug($row['name']);
+
+            $attrs = [
+                'name' => $row['name'],
+                'positioning' => $row['positioning'] ?? null,
+                'target_titles' => $row['target_titles'] ?? [],
+                'criteria' => $row['criteria'] ?? [],
+                'is_active' => (bool) ($row['is_active'] ?? true),
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+
+            if ($existing = $diff['existingByKey']->get($key)) {
+                $existing->update($attrs);
+
+                continue;
+            }
+
+            $user->targetProfiles()->create($attrs);
+        }
+
+        foreach ($diff['toDeactivate'] as $target) {
+            $target->update(['is_active' => false]);
+        }
+
+        return [
+            'added' => $diff['added'],
+            'updated' => $diff['updated'],
+            'deactivated' => $diff['toDeactivate']->count(),
+        ];
+    }
+
+    /**
+     * Compute existing-vs-incoming target diff: which keys are new (added),
+     * which match an existing target (updated), and which existing actives
+     * are missing from the import (toDeactivate).
+     *
+     * @param  array<int, array<string, mixed>>  $targets
+     * @return array{
+     *     existingByKey: Collection<string, TargetProfile>,
+     *     added: int,
+     *     updated: int,
+     *     toDeactivate: Collection<string, TargetProfile>,
+     * }
+     */
+    protected function diff(User $user, array $targets): array
+    {
         $existingByKey = $user->targetProfiles()
             ->get()
             ->keyBy(fn (TargetProfile $t) => Str::slug($t->name));
@@ -125,39 +159,13 @@ class ProfileImporter
         foreach ($targets as $row) {
             $key = $row['key'] ?? Str::slug($row['name']);
             $incomingKeys[] = $key;
-
-            $attrs = [
-                'name' => $row['name'],
-                'positioning' => $row['positioning'] ?? null,
-                'target_titles' => $row['target_titles'] ?? [],
-                'criteria' => $row['criteria'] ?? [],
-                'is_active' => (bool) ($row['is_active'] ?? true),
-                'sort_order' => (int) ($row['sort_order'] ?? 0),
-            ];
-
-            if ($existing = $existingByKey->get($key)) {
-                $existing->update($attrs);
-                $updated++;
-
-                continue;
-            }
-
-            $user->targetProfiles()->create($attrs);
-            $added++;
+            $existingByKey->has($key) ? $updated++ : $added++;
         }
 
         $toDeactivate = $existingByKey
             ->filter(fn (TargetProfile $t) => $t->is_active
                 && ! in_array(Str::slug($t->name), $incomingKeys, true));
 
-        foreach ($toDeactivate as $target) {
-            $target->update(['is_active' => false]);
-        }
-
-        return [
-            'added' => $added,
-            'updated' => $updated,
-            'deactivated' => $toDeactivate->count(),
-        ];
+        return compact('existingByKey', 'added', 'updated', 'toDeactivate');
     }
 }

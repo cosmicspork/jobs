@@ -104,29 +104,20 @@ class User extends Authenticatable implements FilamentUser
      */
     public function bestTargetFor(Listing $listing): ?TargetProfile
     {
-        $relevanceOrder = ['relevant' => 0, 'maybe' => 1, 'irrelevant' => 2];
+        $targetId = ListingUser::query()
+            ->join('target_profiles', 'target_profiles.id', '=', 'listing_user.target_profile_id')
+            ->where('listing_user.listing_id', $listing->id)
+            ->where('listing_user.user_id', $this->id)
+            ->whereNotNull('listing_user.relevance')
+            ->where('target_profiles.is_active', true)
+            ->orderByRaw(ListingUser::orderByRelevanceSql('listing_user.relevance'))
+            ->orderBy('target_profiles.sort_order')
+            ->orderByDesc('listing_user.scored_at')
+            ->value('listing_user.target_profile_id');
 
-        $scored = ListingUser::query()
-            ->where('listing_id', $listing->id)
-            ->where('user_id', $this->id)
-            ->whereNotNull('relevance')
-            ->with('targetProfile')
-            ->get()
-            ->filter(fn (ListingUser $pivot) => $pivot->targetProfile?->is_active)
-            ->sortBy([
-                fn ($a, $b) => ($relevanceOrder[$a->relevance->value] ?? 99)
-                    <=> ($relevanceOrder[$b->relevance->value] ?? 99),
-                fn ($a, $b) => $a->targetProfile->sort_order
-                    <=> $b->targetProfile->sort_order,
-                fn ($a, $b) => $b->scored_at <=> $a->scored_at,
-            ])
-            ->first();
-
-        if ($scored) {
-            return $scored->targetProfile;
-        }
-
-        return $this->activeTargets()->first();
+        return $targetId
+            ? TargetProfile::find($targetId)
+            : $this->activeTargets()->first();
     }
 
     /**

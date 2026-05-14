@@ -133,7 +133,7 @@ class PipelineHealth extends StatsOverviewWidget
             })
             ->groupBy('users.id', 'users.monthly_ai_cap_usd')
             ->get()
-            ->filter(fn ($row): bool => (float) $row->spend >= (float) ($row->monthly_ai_cap_usd ?? $globalCap))
+            ->filter(fn (User $row): bool => (float) $row->getAttribute('spend') >= (float) ($row->monthly_ai_cap_usd ?? $globalCap))
             ->pluck('id')
             ->all();
     }

@@ -43,7 +43,14 @@ class ExportUserData implements ShouldQueue
 
             $zip->close();
 
-            Storage::put($storagePath, file_get_contents($tempZipPath));
+            $stream = fopen($tempZipPath, 'r');
+            try {
+                Storage::put($storagePath, $stream);
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
         } finally {
             @unlink($tempZipPath);
         }

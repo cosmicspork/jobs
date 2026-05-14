@@ -205,7 +205,7 @@ class Profile extends Page
                                 ->columnSpanFull(),
                             Toggle::make('digest_enabled')
                                 ->label('Daily digest email')
-                                ->helperText(fn (): ?string => auth()->user()->hasMinimumProfile()
+                                ->helperText(fn (): string => auth()->user()->hasMinimumProfile()
                                     ? 'Sends a daily summary of new relevant/maybe matches at the time below.'
                                     : 'Finish your profile (summary, skills, and at least one active target with positioning, target titles, and a remote preference) before enabling — scoring is paused until then, so the digest would be empty.')
                                 ->disabled(fn (): bool => ! auth()->user()->hasMinimumProfile())
@@ -330,19 +330,23 @@ class Profile extends Page
                 ])
                 ->action(function (array $data): void {
                     $path = $data['file'] ?? null;
-                    abort_unless(is_string($path) && Storage::disk('local')->exists($path), 422, 'Upload not found.');
-
-                    try {
-                        $parsed = json_decode(Storage::disk('local')->get($path), true, flags: JSON_THROW_ON_ERROR);
-                    } catch (\JsonException $e) {
-                        Storage::disk('local')->delete($path);
-                        throw ValidationException::withMessages(['file' => 'The uploaded file is not valid JSON.']);
+                    if (! is_string($path) || ! Storage::disk('local')->exists($path)) {
+                        throw ValidationException::withMessages(['file' => 'Upload not found.']);
                     }
 
-                    /** @var User $user */
-                    $user = auth()->user();
-                    $result = app(ProfileImporter::class)->import($user, $parsed);
-                    Storage::disk('local')->delete($path);
+                    try {
+                        try {
+                            $parsed = json_decode(Storage::disk('local')->get($path), true, flags: JSON_THROW_ON_ERROR);
+                        } catch (\JsonException) {
+                            throw ValidationException::withMessages(['file' => 'The uploaded file is not valid JSON.']);
+                        }
+
+                        /** @var User $user */
+                        $user = auth()->user();
+                        $result = app(ProfileImporter::class)->import($user, $parsed);
+                    } finally {
+                        Storage::disk('local')->delete($path);
+                    }
 
                     Notification::make()
                         ->title('Profile imported')
