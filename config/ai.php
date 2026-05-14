@@ -13,12 +13,69 @@ return [
     |
     */
 
-    'default' => env('AI_PROVIDER', 'openrouter'),
+    'default' => env('AI_PROVIDER', 'anthropic'),
     'default_for_images' => 'gemini',
     'default_for_audio' => 'openai',
     'default_for_transcription' => 'openai',
     'default_for_embeddings' => 'openai',
     'default_for_reranking' => 'cohere',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Per-Agent Provider & Model
+    |--------------------------------------------------------------------------
+    |
+    | Each agent role resolves its provider and model at runtime from the
+    | values below. Per-role env vars override; provider falls back to
+    | the global AI_PROVIDER; model falls back to the per-role default.
+    |
+    */
+
+    'agents' => [
+        'scorer' => [
+            'provider' => env('AI_SCORER_PROVIDER', env('AI_PROVIDER', 'anthropic')),
+            'model' => env('AI_SCORER_MODEL', 'claude-haiku-4-5'),
+        ],
+        'resume_tailor' => [
+            'provider' => env('AI_RESUME_TAILOR_PROVIDER', env('AI_PROVIDER', 'anthropic')),
+            'model' => env('AI_RESUME_TAILOR_MODEL', 'claude-sonnet-4-6'),
+        ],
+        'cover_letter' => [
+            'provider' => env('AI_COVER_LETTER_PROVIDER', env('AI_PROVIDER', 'anthropic')),
+            'model' => env('AI_COVER_LETTER_MODEL', 'claude-sonnet-4-6'),
+        ],
+        'app_questions' => [
+            'provider' => env('AI_APP_QUESTIONS_PROVIDER', env('AI_PROVIDER', 'anthropic')),
+            'model' => env('AI_APP_QUESTIONS_MODEL', 'claude-sonnet-4-6'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pricing (USD per million tokens)
+    |--------------------------------------------------------------------------
+    |
+    | Keyed by [provider][model]. Each provider/model pair carries its own
+    | prices since they differ across providers (Anthropic Sonnet pricing
+    | is not the same as OpenRouter Sonnet pricing). Include both alias
+    | and dated model names so the value returned by each API resolves.
+    |
+    */
+
+    'pricing' => [
+        'anthropic' => [
+            'claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
+            'claude-sonnet-4-6-20260217' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
+            'claude-haiku-4-5' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
+            'claude-haiku-4-5-20251001' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
+        ],
+        'openrouter' => [
+            'anthropic/claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
+            'anthropic/claude-4.6-sonnet-20260217' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
+            'anthropic/claude-haiku-4-5' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
+            'anthropic/claude-4.5-haiku-20251001' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
+        ],
+    ],
 
     /*
     |--------------------------------------------------------------------------

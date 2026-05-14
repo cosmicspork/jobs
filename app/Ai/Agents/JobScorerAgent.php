@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Relevance;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
-use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
@@ -19,7 +18,6 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Promptable;
 use Stringable;
 
-#[Model('anthropic/claude-haiku-4-5')]
 #[MaxTokens(2048)]
 #[Temperature(0.3)]
 class JobScorerAgent implements Agent, HasStructuredOutput, HasTools
@@ -27,6 +25,16 @@ class JobScorerAgent implements Agent, HasStructuredOutput, HasTools
     use Promptable;
 
     public function __construct(public User $user, public TargetProfile $target) {}
+
+    public function provider(): string
+    {
+        return config('ai.agents.scorer.provider');
+    }
+
+    public function model(): string
+    {
+        return config('ai.agents.scorer.model');
+    }
 
     public function instructions(): Stringable|string
     {

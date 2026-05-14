@@ -12,9 +12,9 @@ class AiUsageSeeder extends Seeder
         // Spread usage across the last 30 days for realistic chart data.
         // JobScorer runs most often (every listing), then resume/cover letter only for applications.
         $agents = [
-            'JobScorerAgent' => ['weight' => 60, 'model' => 'anthropic/claude-haiku-4-5'],
-            'ResumeTailorAgent' => ['weight' => 20, 'model' => 'anthropic/claude-sonnet-4-6'],
-            'CoverLetterAgent' => ['weight' => 20, 'model' => 'anthropic/claude-sonnet-4-6'],
+            'JobScorerAgent' => ['weight' => 60, 'model' => 'claude-haiku-4-5'],
+            'ResumeTailorAgent' => ['weight' => 20, 'model' => 'claude-sonnet-4-6'],
+            'CoverLetterAgent' => ['weight' => 20, 'model' => 'claude-sonnet-4-6'],
         ];
 
         $agentPool = collect($agents)->flatMap(

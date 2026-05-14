@@ -27,13 +27,13 @@ class LogAiUsage
             'cache_write_tokens' => $usage->cacheWriteInputTokens,
             'cache_read_tokens' => $usage->cacheReadInputTokens,
             'reasoning_tokens' => $usage->reasoningTokens,
-            'cost' => $this->calculateCost($meta->model, $usage),
+            'cost' => $this->calculateCost($meta->provider, $meta->model, $usage),
         ]);
     }
 
-    private function calculateCost(?string $model, Usage $usage): float
+    private function calculateCost(?string $provider, ?string $model, Usage $usage): float
     {
-        $pricing = AiUsage::PRICING[$model] ?? null;
+        $pricing = config("ai.pricing.{$provider}.{$model}");
 
         if (! $pricing) {
             return 0;

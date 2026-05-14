@@ -40,7 +40,7 @@ it('logs ai usage from an AgentPrompted event', function () {
 
     $meta = new Meta(
         provider: 'anthropic',
-        model: 'anthropic/claude-haiku-4-5',
+        model: 'claude-haiku-4-5',
     );
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
@@ -50,7 +50,7 @@ it('logs ai usage from an AgentPrompted event', function () {
     $record = AiUsage::first();
     expect($record->agent)->toBe('JobScorerAgent')
         ->and($record->provider)->toBe('anthropic')
-        ->and($record->model)->toBe('anthropic/claude-haiku-4-5')
+        ->and($record->model)->toBe('claude-haiku-4-5')
         ->and($record->prompt_tokens)->toBe(1500)
         ->and($record->completion_tokens)->toBe(500)
         ->and($record->cache_write_tokens)->toBe(100)
@@ -59,9 +59,9 @@ it('logs ai usage from an AgentPrompted event', function () {
         ->and((float) $record->cost)->toBeGreaterThan(0);
 });
 
-it('calculates cost correctly for haiku', function () {
+it('calculates cost correctly for anthropic haiku', function () {
     $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
-    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-haiku-4-5');
+    $meta = new Meta(provider: 'anthropic', model: 'claude-haiku-4-5');
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
@@ -69,9 +69,9 @@ it('calculates cost correctly for haiku', function () {
     expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
 });
 
-it('calculates cost correctly for sonnet', function () {
+it('calculates cost correctly for anthropic sonnet', function () {
     $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
-    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-sonnet-4-6');
+    $meta = new Meta(provider: 'anthropic', model: 'claude-sonnet-4-6');
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
@@ -86,7 +86,7 @@ it('includes cache token costs in calculation', function () {
         cacheWriteInputTokens: 1_000_000,
         cacheReadInputTokens: 1_000_000,
     );
-    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-haiku-4-5');
+    $meta = new Meta(provider: 'anthropic', model: 'claude-haiku-4-5');
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
@@ -94,27 +94,43 @@ it('includes cache token costs in calculation', function () {
     expect(round((float) AiUsage::first()->cost, 2))->toBe(1.35);
 });
 
-it('calculates cost correctly for versioned haiku model name', function () {
+it('calculates cost correctly for dated anthropic haiku', function () {
     $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
-    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-4.5-haiku-20251001');
+    $meta = new Meta(provider: 'anthropic', model: 'claude-haiku-4-5-20251001');
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
-    // Same pricing as haiku alias: $1.00/M input + $5.00/M output = $6.00
     expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
 });
 
-it('calculates cost correctly for versioned sonnet model name', function () {
+it('calculates cost correctly for dated anthropic sonnet', function () {
     $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
-    $meta = new Meta(provider: 'anthropic', model: 'anthropic/claude-4.6-sonnet-20260217');
+    $meta = new Meta(provider: 'anthropic', model: 'claude-sonnet-4-6-20260217');
 
     (new LogAiUsage)->handle(buildEvent($usage, $meta));
 
-    // Same pricing as sonnet alias: $3.00/M input + $15.00/M output = $18.00
     expect(round((float) AiUsage::first()->cost, 2))->toBe(18.00);
 });
 
-it('sets cost to zero for unknown models', function () {
+it('still prices historical openrouter haiku rows', function () {
+    $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
+    $meta = new Meta(provider: 'openrouter', model: 'anthropic/claude-haiku-4-5');
+
+    (new LogAiUsage)->handle(buildEvent($usage, $meta));
+
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
+});
+
+it('still prices historical openrouter sonnet rows', function () {
+    $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
+    $meta = new Meta(provider: 'openrouter', model: 'anthropic/claude-sonnet-4-6');
+
+    (new LogAiUsage)->handle(buildEvent($usage, $meta));
+
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(18.00);
+});
+
+it('sets cost to zero for unknown provider/model combinations', function () {
     $usage = new Usage(promptTokens: 1000, completionTokens: 500);
     $meta = new Meta(provider: 'openai', model: 'gpt-4o');
 

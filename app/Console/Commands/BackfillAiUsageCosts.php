@@ -18,9 +18,10 @@ class BackfillAiUsageCosts extends Command
         AiUsage::query()
             ->where('cost', 0)
             ->whereNotNull('model')
+            ->whereNotNull('provider')
             ->chunkById(100, function ($records) use (&$updated): void {
                 foreach ($records as $record) {
-                    $pricing = AiUsage::PRICING[$record->model] ?? null;
+                    $pricing = config("ai.pricing.{$record->provider}.{$record->model}");
 
                     if (! $pricing) {
                         continue;

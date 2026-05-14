@@ -16,7 +16,8 @@ class AiUsageFactory extends Factory
      */
     public function definition(): array
     {
-        $model = fake()->randomElement(['anthropic/claude-sonnet-4-6', 'anthropic/claude-haiku-4-5']);
+        $provider = 'anthropic';
+        $model = fake()->randomElement(['claude-sonnet-4-6', 'claude-haiku-4-5']);
         $agent = fake()->randomElement(['JobScorerAgent', 'CoverLetterAgent', 'ResumeTailorAgent']);
 
         $promptTokens = fake()->numberBetween(500, 5000);
@@ -24,7 +25,7 @@ class AiUsageFactory extends Factory
         $cacheWriteTokens = fake()->boolean(30) ? fake()->numberBetween(1000, 10000) : 0;
         $cacheReadTokens = fake()->boolean(50) ? fake()->numberBetween(500, 8000) : 0;
 
-        $pricing = AiUsage::PRICING[$model];
+        $pricing = config("ai.pricing.{$provider}.{$model}");
         $cost = ($promptTokens / 1_000_000) * $pricing['input']
             + ($completionTokens / 1_000_000) * $pricing['output']
             + ($cacheWriteTokens / 1_000_000) * $pricing['cacheWrite']
@@ -33,7 +34,7 @@ class AiUsageFactory extends Factory
         return [
             'user_id' => User::factory(),
             'agent' => $agent,
-            'provider' => 'anthropic',
+            'provider' => $provider,
             'model' => $model,
             'prompt_tokens' => $promptTokens,
             'completion_tokens' => $completionTokens,

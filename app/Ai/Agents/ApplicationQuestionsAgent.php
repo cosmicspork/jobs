@@ -9,7 +9,6 @@ use App\Models\TargetProfile;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
-use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
@@ -18,7 +17,6 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Promptable;
 use Stringable;
 
-#[Model('anthropic/claude-sonnet-4-6')]
 #[MaxTokens(8192)]
 #[Temperature(0.7)]
 class ApplicationQuestionsAgent implements Agent, HasStructuredOutput, HasTools
@@ -26,6 +24,16 @@ class ApplicationQuestionsAgent implements Agent, HasStructuredOutput, HasTools
     use Promptable;
 
     public function __construct(public User $user, public TargetProfile $target) {}
+
+    public function provider(): string
+    {
+        return config('ai.agents.app_questions.provider');
+    }
+
+    public function model(): string
+    {
+        return config('ai.agents.app_questions.model');
+    }
 
     public function instructions(): Stringable|string
     {
