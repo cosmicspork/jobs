@@ -2,10 +2,15 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\ExportUserData;
 use App\Models\User;
+use App\Services\ProfileExporter;
+use App\Services\ProfileImporter;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -20,6 +25,9 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * @property-read Schema $form
@@ -256,5 +264,94 @@ class Profile extends Page
             ->title('Profile saved')
             ->success()
             ->send();
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('exportUserData')
+                ->label('Export my data')
+                ->icon(Heroicon::OutlinedArchiveBoxArrowDown)
+                ->color('gray')
+                ->requiresConfirmation()
+                ->modalHeading('Export everything')
+                ->modalDescription('We\'ll build a ZIP with your profile, target profiles, applications, question sets, listing interactions, AI usage, and your generated resume + cover letter PDFs. We\'ll email you a download link when it\'s ready (expires in 24 hours).')
+                ->modalSubmitActionLabel('Queue export')
+                ->action(function (): void {
+                    /** @var User $user */
+                    $user = auth()->user();
+                    ExportUserData::dispatch($user);
+
+                    Notification::make()
+                        ->title('Export queued')
+                        ->body('We\'ll email '.$user->email.' when your ZIP is ready.')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('exportProfile')
+                ->label('Export profile')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('gray')
+                ->action(function (ProfileExporter $exporter): StreamedResponse {
+                    /** @var User $user */
+                    $user = auth()->user();
+                    $payload = $exporter->export($user);
+
+                    return response()->streamDownload(
+                        fn () => print json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+                        $exporter->filename($user),
+                        ['Content-Type' => 'application/json'],
+                    );
+                }),
+
+            Action::make('importProfile')
+                ->label('Import profile')
+                ->icon(Heroicon::OutlinedArrowUpTray)
+                ->color('gray')
+                ->modalHeading('Import profile from a backup')
+                ->modalDescription('Replaces your profile fields (summary, skills, experience, education, prompts, preferences, notification settings). Target profiles are matched by name — existing ones are updated in place, new ones are added, and any not in the file are deactivated (not deleted) so your application history stays intact.')
+                ->modalSubmitActionLabel('Import')
+                ->schema([
+                    FileUpload::make('file')
+                        ->label('Profile JSON')
+                        ->acceptedFileTypes(['application/json'])
+                        ->maxSize(1024)
+                        ->disk('local')
+                        ->directory('profile-imports/'.auth()->id())
+                        ->required(),
+                    Checkbox::make('confirm')
+                        ->label('I understand my profile will be overwritten and targets not in this file will be deactivated.')
+                        ->accepted()
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $path = $data['file'] ?? null;
+                    abort_unless(is_string($path) && Storage::disk('local')->exists($path), 422, 'Upload not found.');
+
+                    try {
+                        $parsed = json_decode(Storage::disk('local')->get($path), true, flags: JSON_THROW_ON_ERROR);
+                    } catch (\JsonException $e) {
+                        Storage::disk('local')->delete($path);
+                        throw ValidationException::withMessages(['file' => 'The uploaded file is not valid JSON.']);
+                    }
+
+                    /** @var User $user */
+                    $user = auth()->user();
+                    $result = app(ProfileImporter::class)->import($user, $parsed);
+                    Storage::disk('local')->delete($path);
+
+                    Notification::make()
+                        ->title('Profile imported')
+                        ->body("Added {$result['added']}, updated {$result['updated']}, deactivated {$result['deactivated']} target profile(s).")
+                        ->success()
+                        ->send();
+
+                    $this->mount();
+                }),
+        ];
     }
 }
