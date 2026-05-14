@@ -34,7 +34,7 @@ return [
     'agents' => [
         'scorer' => [
             'provider' => env('AI_SCORER_PROVIDER', env('AI_PROVIDER', 'anthropic')),
-            'model' => env('AI_SCORER_MODEL', 'claude-haiku-4-5'),
+            'model' => env('AI_SCORER_MODEL', 'claude-haiku-4-5-20251001'),
         ],
         'resume_tailor' => [
             'provider' => env('AI_RESUME_TAILOR_PROVIDER', env('AI_PROVIDER', 'anthropic')),
