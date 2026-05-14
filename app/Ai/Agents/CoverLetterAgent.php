@@ -2,7 +2,6 @@
 
 namespace App\Ai\Agents;
 
-use App\Ai\Tools\GetJobPosting;
 use App\Ai\Tools\GetProfile;
 use App\Ai\Tools\GetTargetProfile;
 use App\Models\TargetProfile;
@@ -48,7 +47,6 @@ class CoverLetterAgent implements Agent, HasStructuredOutput, HasTools
         return [
             new GetProfile($this->user),
             new GetTargetProfile($this->target),
-            new GetJobPosting,
         ];
     }
 

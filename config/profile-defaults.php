@@ -24,7 +24,7 @@ return [
         - GetProfile: candidate identity (skills, experience, education).
         - GetTargetProfile: the target (name, positioning, target_titles,
           criteria).
-        - GetJobPosting: the listing.
+        - The job listing is provided inline in the user message.
 
         STEP 2 — RELEVANCE CLASSIFICATION:
         Classify into one of three tiers:
@@ -106,7 +106,8 @@ return [
           education).
         - GetTargetProfile: the target (positioning, target_titles,
           criteria).
-        - GetJobPosting: the listing being applied to.
+        - The job listing being applied to is provided inline in the user
+          message.
 
         STEP 2 — SUMMARY:
         Lead with the target's "positioning" — that is the angle for this
@@ -170,7 +171,7 @@ return [
         GATHER CONTEXT:
         - GetProfile: candidate identity.
         - GetTargetProfile: target positioning, target_titles, criteria.
-        - GetJobPosting: the listing.
+        - The job listing is provided inline in the user message.
 
         WORD LIMIT: Body under 300 words. Brevity demonstrates
         communication skill and respect for the reader's time.
@@ -235,7 +236,8 @@ return [
         GATHER CONTEXT:
         - GetProfile: candidate identity.
         - GetTargetProfile: target positioning, target_titles, criteria.
-        - GetJobPosting: the listing.
+        - The job listing is provided inline in the user message when a
+          listing has been linked to the question set.
 
         For each question-answer pair, provide:
 

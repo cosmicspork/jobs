@@ -49,6 +49,39 @@ it('honors a per-user cap below the global config', function () {
     expect($this->pivot->fresh()->scored_at)->toBeNull();
 });
 
+it('inlines the listing payload into the user prompt', function () {
+    $listing = Listing::factory()->create([
+        'title' => 'Senior Laravel Engineer',
+        'company' => 'TestCo',
+    ]);
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+    ]);
+
+    $captured = null;
+    JobScorerAgent::fake(function ($prompt) use (&$captured) {
+        $captured = (string) $prompt;
+
+        return [
+            'relevance' => 'relevant',
+            'matched_skills' => [],
+            'gaps' => [],
+            'reasoning' => 'ok',
+        ];
+    });
+
+    (new ScoreListing($listing, $this->target))->handle();
+
+    expect($captured)
+        ->toContain('Score this job listing')
+        ->toContain('Senior Laravel Engineer')
+        ->toContain('TestCo')
+        ->toContain($listing->id)
+        ->not->toContain('listing_id: '.$listing->id);
+});
+
 it('exposes Anthropic prompt-cache control via providerOptions', function () {
     $agent = new JobScorerAgent($this->user, $this->target);
 

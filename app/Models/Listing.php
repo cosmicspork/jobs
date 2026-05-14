@@ -84,6 +84,25 @@ class Listing extends Model
     }
 
     /**
+     * Shape used to inline listing data into AI agent prompts.
+     *
+     * @return array<string, mixed>
+     */
+    public function toAgentPayload(): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'company' => $this->company,
+            'description' => $this->description,
+            'salary_min' => $this->salary_min,
+            'salary_max' => $this->salary_max,
+            'remote' => $this->remote,
+            'url' => $this->url,
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

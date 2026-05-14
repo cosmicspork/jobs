@@ -332,8 +332,11 @@ class ApplicationQuestions extends Page
     {
         $lines = [];
 
-        if ($listingId) {
-            $lines[] = "Review my answers to application questions for listing_id: {$listingId}.";
+        $listing = $listingId ? Listing::find($listingId) : null;
+
+        if ($listing) {
+            $listingJson = json_encode($listing->toAgentPayload(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+            $lines[] = "Review my answers to application questions for this job posting:\n```json\n{$listingJson}\n```";
         } else {
             $lines[] = 'Review my answers to the following application questions.';
         }
