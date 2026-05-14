@@ -272,3 +272,46 @@ it('counts the 24-hour screened total', function () {
         return $mail->stats['screened_24h'] === 3;
     });
 });
+
+it('excludes pivots that have already been digested', function () {
+    $listing = Listing::factory()->create();
+    ListingUser::create([
+        'listing_id' => $listing->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now()->subHours(2),
+        'digested_at' => now()->subHours(2),
+    ]);
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    Mail::assertSent(DailyDigest::class, function (DailyDigest $mail) {
+        return $mail->relevantListings->isEmpty() && $mail->maybeListings->isEmpty();
+    });
+});
+
+it('stamps digested_at on pivots after sending', function () {
+    $relevant = Listing::factory()->create();
+    $maybe = Listing::factory()->create();
+
+    $relevantPivot = ListingUser::create([
+        'listing_id' => $relevant->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+        'relevance' => Relevance::Relevant,
+        'scored_at' => now()->subHour(),
+    ]);
+    $maybePivot = ListingUser::create([
+        'listing_id' => $maybe->id,
+        'user_id' => $this->user->id,
+        'target_profile_id' => $this->target->id,
+        'relevance' => Relevance::Maybe,
+        'scored_at' => now()->subHour(),
+    ]);
+
+    $this->artisan('digest:send')->assertSuccessful();
+
+    expect($relevantPivot->refresh()->digested_at)->not->toBeNull()
+        ->and($maybePivot->refresh()->digested_at)->not->toBeNull();
+});

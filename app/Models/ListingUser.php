@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $starred_at
  * @property Carbon|null $shortlisted_at
  * @property Carbon|null $dismissed_at
+ * @property Carbon|null $digested_at
  */
 class ListingUser extends Pivot
 {
@@ -40,6 +41,7 @@ class ListingUser extends Pivot
         'starred_at',
         'shortlisted_at',
         'dismissed_at',
+        'digested_at',
     ];
 
     /**
@@ -129,6 +131,7 @@ class ListingUser extends Pivot
             'starred_at' => 'datetime',
             'shortlisted_at' => 'datetime',
             'dismissed_at' => 'datetime',
+            'digested_at' => 'datetime',
         ];
     }
 }

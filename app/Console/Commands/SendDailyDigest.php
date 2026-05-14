@@ -37,7 +37,15 @@ class SendDailyDigest extends Command
                     return;
                 }
 
-                Mail::to($user->email)->send($this->buildDigest($user, $since));
+                [$digest, $deliveredPivotIds] = $this->buildDigest($user, $since);
+                Mail::to($user->email)->send($digest);
+
+                if ($deliveredPivotIds !== []) {
+                    ListingUser::query()
+                        ->whereIn('id', $deliveredPivotIds)
+                        ->update(['digested_at' => now()]);
+                }
+
                 $sent++;
             });
 
@@ -54,14 +62,19 @@ class SendDailyDigest extends Command
         return $nowInTz === $target;
     }
 
-    protected function buildDigest(User $user, Carbon $since): DailyDigest
+    /**
+     * @return array{0: DailyDigest, 1: array<int, string>}
+     */
+    protected function buildDigest(User $user, Carbon $since): array
     {
-        // Pivots scored in the past day — multiple per listing (one per active target).
-        // Dedupe to the best-relevance pivot per listing for digest display.
+        // Pivots scored in the past day, never previously surfaced in a digest.
+        // Multiple per listing (one per active target); dedupe to the best-
+        // relevance pivot per listing for display.
         $scoredPivots = ListingUser::query()
             ->where('user_id', $user->id)
             ->whereNotNull('relevance')
             ->whereNull('dismissed_at')
+            ->whereNull('digested_at')
             ->where('scored_at', '>=', $since)
             ->orderByRaw(ListingUser::orderByRelevanceSql())
             ->orderByDesc('scored_at')
@@ -78,8 +91,10 @@ class SendDailyDigest extends Command
             return $pivot->listing;
         };
 
-        $relevantListings = $scoredPivots->get(Relevance::Relevant->value, collect())->map($attachContext);
-        $maybeListings = $scoredPivots->get(Relevance::Maybe->value, collect())->map($attachContext);
+        $relevantPivots = $scoredPivots->get(Relevance::Relevant->value, collect());
+        $maybePivots = $scoredPivots->get(Relevance::Maybe->value, collect());
+        $relevantListings = $relevantPivots->map($attachContext);
+        $maybeListings = $maybePivots->map($attachContext);
 
         $applicationUpdates = Application::query()
             ->where('user_id', $user->id)
@@ -92,18 +107,28 @@ class SendDailyDigest extends Command
         $readyApplications = $applicationUpdates->get(ApplicationStatus::Ready->value, collect());
         $failedApplications = $applicationUpdates->get(ApplicationStatus::Failed->value, collect());
 
-        $shortlistedWithoutApplications = ListingUser::query()
+        $shortlistedPivots = ListingUser::query()
             ->where('user_id', $user->id)
             ->whereNotNull('shortlisted_at')
             ->whereNull('dismissed_at')
+            ->whereNull('digested_at')
             ->where('shortlisted_at', '>=', $since)
             ->with('listing')
             ->whereDoesntHave('listing.applications', fn ($q) => $q->where('user_id', $user->id))
             ->latest('shortlisted_at')
             ->get()
             ->unique('listing_id')
+            ->values();
+
+        $shortlistedWithoutApplications = $shortlistedPivots->pluck('listing');
+
+        $deliveredPivotIds = $relevantPivots
+            ->concat($maybePivots)
+            ->concat($shortlistedPivots)
+            ->pluck('id')
+            ->unique()
             ->values()
-            ->pluck('listing');
+            ->all();
 
         $stats = [
             'screened_24h' => $this->countScreened($user, $since),
@@ -112,15 +137,18 @@ class SendDailyDigest extends Command
             'maybe_7d' => $this->countScoredRelevance($user, Relevance::Maybe, now()->subDays(7)),
         ];
 
-        return new DailyDigest(
-            user: $user,
-            relevantListings: $relevantListings,
-            maybeListings: $maybeListings,
-            readyApplications: $readyApplications,
-            failedApplications: $failedApplications,
-            shortlistedWithoutApplications: $shortlistedWithoutApplications,
-            stats: $stats,
-        );
+        return [
+            new DailyDigest(
+                user: $user,
+                relevantListings: $relevantListings,
+                maybeListings: $maybeListings,
+                readyApplications: $readyApplications,
+                failedApplications: $failedApplications,
+                shortlistedWithoutApplications: $shortlistedWithoutApplications,
+                stats: $stats,
+            ),
+            $deliveredPivotIds,
+        ];
     }
 
     protected function countScreened(User $user, Carbon $since): int

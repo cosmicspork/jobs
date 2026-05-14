@@ -32,6 +32,12 @@
                         </span>
                         @if ($pivot->scored_at)
                             <span class="text-gray-500 dark:text-gray-400">{{ $pivot->scored_at->diffForHumans() }}</span>
+                            @if ($pivot->targetProfile->updated_at->gt($pivot->scored_at))
+                                <span class="fi-badge fi-color-warning inline-flex items-center justify-center gap-x-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset bg-yellow-50 text-yellow-800 ring-yellow-600/20 dark:bg-yellow-400/10 dark:text-yellow-400 dark:ring-yellow-400/30"
+                                    title="The target was edited after this score was computed. Click Re-score to refresh.">
+                                    Target updated since
+                                </span>
+                            @endif
                         @endif
                     </div>
                 </div>

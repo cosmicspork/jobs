@@ -5,8 +5,10 @@ namespace App\Filament\Resources\Listings\Pages;
 use App\Filament\Pages\ApplicationQuestions;
 use App\Filament\Resources\Listings\Concerns\HasListingActions;
 use App\Filament\Resources\Listings\ListingResource;
+use App\Jobs\ScoreListing;
 use App\Models\Application;
 use App\Models\Listing;
+use App\Models\ListingUser;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -74,6 +76,37 @@ class ViewListing extends ViewRecord
                     return ApplicationQuestions::getUrl(['listing' => $listing->id]);
                 }),
             $this->getToggleStarredAction(),
+            Action::make('rescore')
+                ->label('Re-score against current targets')
+                ->icon('heroicon-o-arrow-path')
+                ->color('gray')
+                ->requiresConfirmation()
+                ->modalDescription('Re-runs the AI scorer for this listing against each of your active targets. The new scores update in place and will not appear in your daily digest.')
+                ->action(function (): void {
+                    /** @var Listing $listing */
+                    $listing = $this->record;
+
+                    $pivots = ListingUser::query()
+                        ->where('listing_id', $listing->id)
+                        ->where('user_id', auth()->id())
+                        ->with('targetProfile')
+                        ->get()
+                        ->filter(fn (ListingUser $p) => $p->targetProfile?->is_active);
+
+                    foreach ($pivots as $pivot) {
+                        ScoreListing::dispatch($listing, $pivot->targetProfile);
+                        if ($pivot->digested_at === null) {
+                            $pivot->update(['digested_at' => now()]);
+                        }
+                    }
+
+                    Notification::make()
+                        ->title($pivots->isEmpty()
+                            ? 'No active targets to score against'
+                            : "Re-scoring against {$pivots->count()} target(s)")
+                        ->success()
+                        ->send();
+                }),
             EditAction::make(),
             Action::make('toggleRead')
                 ->label(fn (): string => $this->getUserPivotForAction()?->read_at ? 'Mark Unread' : 'Mark Read')
