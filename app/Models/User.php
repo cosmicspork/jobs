@@ -97,8 +97,10 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Pick the best-fit target for a given listing — the active target whose pivot has
-     * the highest relevance score. Falls back to the first active target if nothing scored.
+     * Pick the best-fit target for a given listing. Ranks active targets by
+     * pivot relevance first, then by the user's explicit sort_order ascending,
+     * then by scored_at DESC as a stable final tiebreaker. Falls back to the
+     * first active target if nothing scored.
      */
     public function bestTargetFor(Listing $listing): ?TargetProfile
     {
@@ -112,8 +114,11 @@ class User extends Authenticatable implements FilamentUser
             ->get()
             ->filter(fn (ListingUser $pivot) => $pivot->targetProfile?->is_active)
             ->sortBy([
-                fn ($a, $b) => ($relevanceOrder[$a->relevance->value] ?? 99) <=> ($relevanceOrder[$b->relevance->value] ?? 99),
-                fn ($a, $b) => ($b->scored_at <=> $a->scored_at),
+                fn ($a, $b) => ($relevanceOrder[$a->relevance->value] ?? 99)
+                    <=> ($relevanceOrder[$b->relevance->value] ?? 99),
+                fn ($a, $b) => $a->targetProfile->sort_order
+                    <=> $b->targetProfile->sort_order,
+                fn ($a, $b) => $b->scored_at <=> $a->scored_at,
             ])
             ->first();
 
