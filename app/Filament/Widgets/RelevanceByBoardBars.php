@@ -17,6 +17,7 @@ class RelevanceByBoardBars extends StatsOverviewWidget
     private const BOARD_LABELS = [
         'hn' => 'Hacker News',
         'larajobs' => 'Larajobs',
+        'wwr' => 'We Work Remotely',
     ];
 
     protected function getStats(): array
