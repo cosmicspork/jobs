@@ -27,8 +27,11 @@ class GenerateResume implements ShouldQueue
 
         $listingJson = json_encode($listing->toAgentPayload(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
-        $response = (new ResumeTailorAgent($user, $target))->prompt(
-            "Tailor my resume for this job posting:\n```json\n{$listingJson}\n```"
+        $agent = new ResumeTailorAgent($user, $target);
+
+        $response = $agent->prompt(
+            "Tailor my resume for this job posting:\n```json\n{$listingJson}\n```",
+            provider: $agent->providers() ?: null,
         );
 
         $pdf = Pdf::loadView('resume.base', [

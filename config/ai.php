@@ -35,18 +35,29 @@ return [
         'scorer' => [
             'provider' => env('AI_SCORER_PROVIDER', env('AI_PROVIDER', 'anthropic')),
             'model' => env('AI_SCORER_MODEL', 'claude-haiku-4-5-20251001'),
+            'failover' => [
+                // Ordered map of provider => model. Empty disables failover.
+                // Only FailoverableException (rate-limit / overload) triggers
+                // failover — not provider-cap or spending-limit errors.
+                // Example to enable:
+                //   'anthropic' => 'claude-haiku-4-5-20251001',
+                //   'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+            ],
         ],
         'resume_tailor' => [
             'provider' => env('AI_RESUME_TAILOR_PROVIDER', env('AI_PROVIDER', 'anthropic')),
             'model' => env('AI_RESUME_TAILOR_MODEL', 'claude-sonnet-4-6'),
+            'failover' => [],
         ],
         'cover_letter' => [
             'provider' => env('AI_COVER_LETTER_PROVIDER', env('AI_PROVIDER', 'anthropic')),
             'model' => env('AI_COVER_LETTER_MODEL', 'claude-sonnet-4-6'),
+            'failover' => [],
         ],
         'app_questions' => [
             'provider' => env('AI_APP_QUESTIONS_PROVIDER', env('AI_PROVIDER', 'anthropic')),
             'model' => env('AI_APP_QUESTIONS_MODEL', 'claude-sonnet-4-6'),
+            'failover' => [],
         ],
     ],
 

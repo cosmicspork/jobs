@@ -189,8 +189,10 @@ class ApplicationQuestions extends Page
 
         $prompt = $this->buildAgentPrompt($questions, $listingId);
 
+        $agent = new ApplicationQuestionsAgent($user, $target);
+
         try {
-            $response = (new ApplicationQuestionsAgent($user, $target))->prompt($prompt);
+            $response = $agent->prompt($prompt, provider: $agent->providers() ?: null);
 
             foreach ($response['answers'] as $answer) {
                 $index = $answer['question_index'];

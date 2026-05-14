@@ -43,9 +43,12 @@ class ScoreListing implements ShouldQueue
 
         $listingJson = json_encode($this->listing->toAgentPayload(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
+        $agent = new JobScorerAgent($user, $this->target);
+
         try {
-            $response = (new JobScorerAgent($user, $this->target))->prompt(
-                "Score this job listing:\n```json\n{$listingJson}\n```"
+            $response = $agent->prompt(
+                "Score this job listing:\n```json\n{$listingJson}\n```",
+                provider: $agent->providers() ?: null,
             );
         } catch (AiException $e) {
             if ($until = self::extractProviderUsageLimit($e->getMessage())) {

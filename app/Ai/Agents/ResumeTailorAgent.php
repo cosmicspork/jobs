@@ -34,6 +34,14 @@ class ResumeTailorAgent implements Agent, HasStructuredOutput, HasTools
         return config('ai.agents.resume_tailor.model');
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function providers(): array
+    {
+        return config('ai.agents.resume_tailor.failover', []);
+    }
+
     public function instructions(): Stringable|string
     {
         return $this->user->getPrompt('resume');

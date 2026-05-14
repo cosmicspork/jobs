@@ -27,8 +27,11 @@ class GenerateCoverLetter implements ShouldQueue
 
         $listingJson = json_encode($listing->toAgentPayload(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
-        $response = (new CoverLetterAgent($user, $target))->prompt(
-            "Write a cover letter for this job posting:\n```json\n{$listingJson}\n```"
+        $agent = new CoverLetterAgent($user, $target);
+
+        $response = $agent->prompt(
+            "Write a cover letter for this job posting:\n```json\n{$listingJson}\n```",
+            provider: $agent->providers() ?: null,
         );
 
         $pdf = Pdf::loadView('cover-letter.base', [

@@ -37,6 +37,16 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput, 
         return config('ai.agents.scorer.model');
     }
 
+    /**
+     * Failover map (provider => model). Empty array disables failover.
+     *
+     * @return array<string, string>
+     */
+    public function providers(): array
+    {
+        return config('ai.agents.scorer.failover', []);
+    }
+
     public function instructions(): Stringable|string
     {
         return $this->user->getPrompt('scorer');

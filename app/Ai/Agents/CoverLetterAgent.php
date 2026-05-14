@@ -34,6 +34,14 @@ class CoverLetterAgent implements Agent, HasStructuredOutput, HasTools
         return config('ai.agents.cover_letter.model');
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function providers(): array
+    {
+        return config('ai.agents.cover_letter.failover', []);
+    }
+
     public function instructions(): Stringable|string
     {
         return $this->user->getPrompt('cover_letter');

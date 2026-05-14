@@ -34,6 +34,14 @@ class ApplicationQuestionsAgent implements Agent, HasStructuredOutput, HasTools
         return config('ai.agents.app_questions.model');
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function providers(): array
+    {
+        return config('ai.agents.app_questions.failover', []);
+    }
+
     public function instructions(): Stringable|string
     {
         return $this->user->getPrompt('application_questions');

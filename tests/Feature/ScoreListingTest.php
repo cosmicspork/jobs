@@ -82,6 +82,28 @@ it('inlines the listing payload into the user prompt', function () {
         ->not->toContain('listing_id: '.$listing->id);
 });
 
+it('exposes the failover map from config via providers()', function () {
+    config(['ai.agents.scorer.failover' => [
+        'anthropic' => 'claude-haiku-4-5-20251001',
+        'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+    ]]);
+
+    $agent = new JobScorerAgent($this->user, $this->target);
+
+    expect($agent->providers())->toBe([
+        'anthropic' => 'claude-haiku-4-5-20251001',
+        'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+    ]);
+});
+
+it('returns an empty failover array when none is configured', function () {
+    config(['ai.agents.scorer.failover' => []]);
+
+    $agent = new JobScorerAgent($this->user, $this->target);
+
+    expect($agent->providers())->toBe([]);
+});
+
 it('exposes Anthropic prompt-cache control via providerOptions', function () {
     $agent = new JobScorerAgent($this->user, $this->target);
 
