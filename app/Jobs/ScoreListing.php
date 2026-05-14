@@ -28,6 +28,10 @@ class ScoreListing implements ShouldQueue
     {
         $user = $this->target->user;
 
+        if ($user->isOverAiCap()) {
+            return;
+        }
+
         $response = (new JobScorerAgent($user, $this->target))->prompt(
             "Score this job listing (listing_id: {$this->listing->id})."
         );

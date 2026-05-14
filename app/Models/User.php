@@ -136,6 +136,17 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(AiUsage::class);
     }
 
+    public function isOverAiCap(): bool
+    {
+        $spend = (float) $this->aiUsages()
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->sum('cost');
+
+        $cap = (float) ($this->monthly_ai_cap_usd ?? config('scoring.monthly_cap_usd'));
+
+        return $spend >= $cap;
+    }
+
     /**
      * Get the profile data as a plain array (used by AI agents).
      *
