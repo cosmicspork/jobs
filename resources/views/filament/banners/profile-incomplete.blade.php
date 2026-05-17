@@ -1,19 +1,26 @@
 @php
     $user = auth()->user();
-    $onProfile = request()->routeIs('filament.admin.pages.profile');
-    $onHome = request()->routeIs('filament.admin.pages.home');
+    $hideOnRoutes = ['filament.admin.pages.profile', 'filament.admin.pages.home'];
 @endphp
 
-@if ($user && ! $user->hasMinimumProfile() && ! $onProfile && ! $onHome)
-    <div class="fi-banner bg-amber-100 dark:bg-amber-900/40 border-b border-amber-300 dark:border-amber-700 px-6 py-3">
-        <div class="flex items-center justify-between gap-4">
-            <div class="text-sm text-amber-900 dark:text-amber-100">
-                <strong>Finish setting up your profile</strong> — scoring stays paused until you add a title, a summary, skills, and at least one active target.
-            </div>
-            <a href="{{ \App\Filament\Pages\Profile::getUrl() }}"
-               class="text-sm font-semibold underline text-amber-900 dark:text-amber-100 hover:no-underline">
-                Go to Profile →
-            </a>
-        </div>
+@if ($user && ! $user->hasMinimumProfile() && ! request()->routeIs(...$hideOnRoutes))
+    <div class="px-6 pt-4">
+        <x-filament::callout
+            color="warning"
+            icon="heroicon-m-exclamation-triangle"
+            heading="Finish setting up your profile"
+            description="Scoring stays paused until you add a summary, skills, and at least one active target."
+        >
+            <x-slot name="controls">
+                <x-filament::link
+                    :href="\App\Filament\Pages\Profile::getUrl()"
+                    color="warning"
+                    weight="semibold"
+                    tag="a"
+                >
+                    Go to Profile
+                </x-filament::link>
+            </x-slot>
+        </x-filament::callout>
     </div>
 @endif
