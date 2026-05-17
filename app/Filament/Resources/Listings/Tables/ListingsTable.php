@@ -131,7 +131,12 @@ class ListingsTable
                     ->queries(
                         true: fn ($query) => $query->whereNotNull('listing_user.dismissed_at'),
                         false: fn ($query) => $query->whereNull('listing_user.dismissed_at'),
-                    ),
+                    )
+                    ->indicateUsing(fn (array $data): ?string => match ($data['value'] ?? null) {
+                        true => 'Dismissed only',
+                        null => 'Including dismissed',
+                        default => null,
+                    }),
                 SelectFilter::make('board')
                     ->options(fn () => collect(config('boards'))->mapWithKeys(fn ($board, $key) => [$key => $board['name']])),
                 SelectFilter::make('relevance')

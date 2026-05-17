@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Listings\Concerns;
 
+use App\Filament\Pages\ApplicationQuestions;
+use App\Jobs\ScoreListing;
 use App\Models\Application;
 use App\Models\Listing;
 use App\Models\ListingUser;
@@ -88,6 +90,144 @@ trait HasListingActions
             ->action(function (): void {
                 $this->getUserPivotForAction()?->toggleStarred();
             });
+    }
+
+    protected function getToggleReadAction(): Action
+    {
+        return Action::make('toggleRead')
+            ->label(fn (): string => $this->getUserPivotForAction()?->read_at ? 'Mark Unread' : 'Mark Read')
+            ->icon(fn (): string => $this->getUserPivotForAction()?->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
+            ->action(function (): void {
+                $this->getUserPivotForAction()?->toggleRead();
+            });
+    }
+
+    protected function getToggleShortlistedAction(): Action
+    {
+        return Action::make('toggleShortlisted')
+            ->label(fn (): string => $this->getUserPivotForAction()?->shortlisted_at ? 'Un-shortlist' : 'Shortlist')
+            ->icon('heroicon-o-clipboard-document-check')
+            ->color(fn (): string => $this->getUserPivotForAction()?->shortlisted_at ? 'gray' : 'success')
+            ->action(function (): void {
+                $pivot = $this->getUserPivotForAction();
+                $pivot?->toggleShortlisted();
+
+                Notification::make()
+                    ->title($pivot?->fresh()?->shortlisted_at ? 'Listing shortlisted' : 'Removed from shortlist')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    protected function getToggleDismissedAction(): Action
+    {
+        return Action::make('toggleDismissed')
+            ->label(fn (): string => $this->getUserPivotForAction()?->dismissed_at ? 'Restore' : 'Dismiss')
+            ->icon(fn (): string => $this->getUserPivotForAction()?->dismissed_at ? 'heroicon-o-arrow-uturn-left' : 'heroicon-o-archive-box-x-mark')
+            ->color(fn (): string => $this->getUserPivotForAction()?->dismissed_at ? 'gray' : 'danger')
+            ->requiresConfirmation(fn (): bool => ! $this->getUserPivotForAction()?->dismissed_at)
+            ->action(function (): void {
+                $pivot = $this->getUserPivotForAction();
+                $pivot?->toggleDismissed();
+
+                Notification::make()
+                    ->title($pivot?->fresh()?->dismissed_at ? 'Listing dismissed' : 'Listing restored')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    protected function getApplicationQuestionsAction(): Action
+    {
+        return Action::make('applicationQuestions')
+            ->label('Application Questions')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->visible(fn (): bool => Application::query()
+                ->where('user_id', auth()->id())
+                ->where('listing_id', $this->record->getKey())
+                ->exists())
+            ->url(function (): string {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                return ApplicationQuestions::getUrl(['listing' => $listing->id]);
+            });
+    }
+
+    protected function getRescoreAction(): Action
+    {
+        return Action::make('rescore')
+            ->label('Re-score against current targets')
+            ->icon('heroicon-o-arrow-path')
+            ->color('gray')
+            ->visible(fn (): bool => $this->shouldShowRescore())
+            ->requiresConfirmation()
+            ->modalDescription('Re-runs the AI scorer for this listing against each of your active targets. The new scores update in place and will not appear in your daily digest.')
+            ->action(function (): void {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                $pivots = ListingUser::query()
+                    ->where('listing_id', $listing->id)
+                    ->where('user_id', auth()->id())
+                    ->with('targetProfile')
+                    ->get()
+                    ->filter(fn (ListingUser $p) => $p->targetProfile?->is_active);
+
+                foreach ($pivots as $pivot) {
+                    ScoreListing::dispatch($listing, $pivot->targetProfile);
+                    if ($pivot->digested_at === null) {
+                        $pivot->update(['digested_at' => now()]);
+                    }
+                }
+
+                Notification::make()
+                    ->title($pivots->isEmpty()
+                        ? 'No active targets to score against'
+                        : "Re-scoring against {$pivots->count()} target(s)")
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * Rescore is only worth showing when there's actionable work — either an
+     * active target with no score for this listing, or a scored pivot whose
+     * target was edited after the score was computed (the "Target updated
+     * since" case surfaced in the target-scores view).
+     */
+    protected function shouldShowRescore(): bool
+    {
+        /** @var User $user */
+        $user = auth()->user();
+        /** @var Listing $listing */
+        $listing = $this->record;
+
+        $activeTargets = $user->activeTargets();
+
+        if ($activeTargets->isEmpty()) {
+            return false;
+        }
+
+        $pivots = ListingUser::query()
+            ->where('listing_id', $listing->getKey())
+            ->where('user_id', $user->id)
+            ->get()
+            ->keyBy('target_profile_id');
+
+        foreach ($activeTargets as $target) {
+            $pivot = $pivots->get($target->id);
+
+            if ($pivot === null || $pivot->scored_at === null) {
+                return true;
+            }
+
+            if ($target->updated_at->gt($pivot->scored_at)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function getJobLinkAction(): Action

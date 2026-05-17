@@ -60,12 +60,12 @@ it('toggles dismissed via the ViewListing page action', function () {
     $pivot = makePivot($listing->id, $this->user->id, $this->target->id);
 
     Livewire::test(ViewListing::class, ['record' => $listing->id])
-        ->callAction('toggleDismissed');
+        ->callAction(TestAction::make('toggleDismissed')->schemaComponent('jobDetails'));
 
     expect($pivot->fresh()->dismissed_at)->not->toBeNull();
 
     Livewire::test(ViewListing::class, ['record' => $listing->id])
-        ->callAction('toggleDismissed');
+        ->callAction(TestAction::make('toggleDismissed')->schemaComponent('jobDetails'));
 
     expect($pivot->fresh()->dismissed_at)->toBeNull();
 });
@@ -93,12 +93,12 @@ it('toggles shortlisted via the ViewListing page action', function () {
     expect($pivot->shortlisted_at)->toBeNull();
 
     Livewire::test(ViewListing::class, ['record' => $listing->id])
-        ->callAction('toggleShortlisted');
+        ->callAction(TestAction::make('toggleShortlisted')->schemaComponent('jobDetails'));
 
     expect($pivot->fresh()->shortlisted_at)->not->toBeNull();
 
     Livewire::test(ViewListing::class, ['record' => $listing->id])
-        ->callAction('toggleShortlisted');
+        ->callAction(TestAction::make('toggleShortlisted')->schemaComponent('jobDetails'));
 
     expect($pivot->fresh()->shortlisted_at)->toBeNull();
 });

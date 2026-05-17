@@ -6,7 +6,6 @@ use App\Filament\Resources\Listings\Pages\CreateListing;
 use App\Filament\Resources\Listings\Pages\EditListing;
 use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Filament\Resources\Listings\Pages\ViewListing;
-use App\Filament\Resources\Listings\RelationManagers\ApplicationsRelationManager;
 use App\Filament\Resources\Listings\Schemas\ListingForm;
 use App\Filament\Resources\Listings\Schemas\ListingInfolist;
 use App\Filament\Resources\Listings\Tables\ListingsTable;
@@ -38,13 +37,6 @@ class ListingResource extends Resource
     public static function table(Table $table): Table
     {
         return ListingsTable::configure($table);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            ApplicationsRelationManager::class,
-        ];
     }
 
     public static function getPages(): array
