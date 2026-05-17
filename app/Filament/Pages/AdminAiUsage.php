@@ -12,8 +12,6 @@ use Filament\Support\Icons\Heroicon;
 
 class AdminAiUsage extends Page
 {
-    protected string $view = 'filament.pages.admin-ai-usage';
-
     protected static ?string $title = 'AI Usage';
 
     protected static ?string $navigationLabel = 'AI Usage';

@@ -13,8 +13,6 @@ use Filament\Support\Icons\Heroicon;
 
 class AdminDashboard extends Page
 {
-    protected string $view = 'filament.pages.admin-dashboard';
-
     protected static ?string $title = 'Admin Overview';
 
     protected static ?string $navigationLabel = 'Overview';
