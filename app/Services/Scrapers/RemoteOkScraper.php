@@ -26,7 +26,7 @@ class RemoteOkScraper implements ScraperInterface
      */
     public function scrape(): Generator
     {
-        $response = Http::withHeaders(['User-Agent' => 'jobs-app/1.0 (contact: 106683649+cosmicspork@users.noreply.github.com)'])
+        $response = Http::withHeaders(['User-Agent' => 'jobs-app/1.0 (+https://github.com/cosmicspork/jobs)'])
             ->acceptJson()
             ->get($this->endpoint);
 
