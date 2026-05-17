@@ -12,20 +12,20 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        User::factory()->manager()->create([
+        $admin = User::factory()->manager()->create([
             'name' => 'Admin Manager',
             'email' => 'admin@example.com',
             'is_admin' => true,
         ]);
 
-        User::factory()->ic()->create([
+        $test = User::factory()->ic()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
 
-        $this->call([
-            ListingSeeder::class,
-            AiUsageSeeder::class,
-        ]);
+        $users = [$admin, $test];
+
+        $this->callWith(ListingSeeder::class, ['users' => $users]);
+        $this->callWith(AiUsageSeeder::class, ['users' => $users]);
     }
 }

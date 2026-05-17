@@ -12,9 +12,18 @@ use Illuminate\Database\Seeder;
 
 class ListingSeeder extends Seeder
 {
-    public function run(): void
+    /**
+     * @param  array<int, User>  $users
+     */
+    public function run(array $users): void
     {
-        $user = User::first() ?? User::factory()->create();
+        foreach ($users as $user) {
+            $this->seedFor($user);
+        }
+    }
+
+    private function seedFor(User $user): void
+    {
         $target = $user->targetProfiles()->first()
             ?? TargetProfile::factory()->for($user)->create();
 
