@@ -13,11 +13,11 @@ beforeEach(function () {
                 'role' => 'Software Developer',
                 'company' => 'Acme Industries',
                 'period' => 'June 2022 - Present',
-                'highlights' => ['Led AI tooling task force for a 50-person org.'],
+                'highlights' => ['Led tooling task force for a 50-person org.'],
             ],
         ],
         'education' => [
-            'M.S. in IT Innovation — Example University, 2023',
+            'M.S. in Computer Science — Example University, 2023',
         ],
         'experience_years' => '9+',
         'preferences' => ['salary_min' => 120000],
@@ -37,7 +37,7 @@ it('renders the resume template with structured experience', function () {
                 'company' => 'Acme Industries',
                 'period' => 'June 2022 - Present',
                 'highlights' => [
-                    'Led AI tooling task force for a 50-person org.',
+                    'Led tooling task force for a 50-person org.',
                     'Designed a centralized integrations framework in Laravel.',
                 ],
             ],
@@ -60,7 +60,7 @@ it('renders the resume template with structured experience', function () {
         ->toContain('Software Developer')
         ->toContain('Acme Industries')
         ->toContain('June 2022 - Present')
-        ->toContain('Led AI tooling task force')
+        ->toContain('Led tooling task force')
         ->toContain('Co-Founder &amp; CTO')
         ->toContain('Initech')
         ->toContain('Education');
@@ -84,5 +84,5 @@ it('includes education from profile', function () {
         'listing' => $listing,
     ])->render();
 
-    expect($html)->toContain('M.S. in IT Innovation');
+    expect($html)->toContain('M.S. in Computer Science');
 });

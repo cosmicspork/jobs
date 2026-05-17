@@ -6,13 +6,13 @@ use App\Models\User;
 it('renders the cover letter template with letterhead', function () {
     $user = login(User::factory()->create([
         'name' => 'Test User',
-        'email' => 'josh@example.com',
+        'email' => 'test@example.com',
     ]));
 
     $listing = Listing::factory()->create(['company' => 'Acme Corp']);
 
     $html = view('cover-letter.base', [
-        'profile' => array_merge($user->getProfileData(), ['email' => 'josh@example.com']),
+        'profile' => array_merge($user->getProfileData(), ['email' => 'test@example.com']),
         'subjectLine' => 'Engineering Manager',
         'body' => "First paragraph.\n\nSecond paragraph.",
         'listing' => $listing,
@@ -20,7 +20,7 @@ it('renders the cover letter template with letterhead', function () {
 
     expect($html)
         ->toContain('Test User')
-        ->toContain('josh@example.com')
+        ->toContain('test@example.com')
         ->toContain('Acme Corp')
         ->toContain('Position: Engineering Manager')
         ->toContain('Dear Hiring Team at Acme Corp')
@@ -32,7 +32,7 @@ it('renders the cover letter template with letterhead', function () {
 it('renders without email when not set', function () {
     $user = login(User::factory()->create([
         'name' => 'Test User',
-        'email' => 'josh@example.com',
+        'email' => 'test@example.com',
     ]));
 
     $listing = Listing::factory()->create(['company' => 'Test Co']);
