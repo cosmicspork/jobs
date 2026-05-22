@@ -176,6 +176,28 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Compose the full system-prompt instructions for an agent: base prompt
+     * followed by the candidate profile and target JSON. Order matters for
+     * prompt-cache reuse — the static prompt + profile prefix stays stable
+     * across calls for this user, so only the target tail varies.
+     */
+    public function getAgentInstructions(string $key, TargetProfile $target): string
+    {
+        $profileJson = json_encode($this->getProfileData(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+
+        $targetJson = json_encode([
+            'name' => $target->name,
+            'positioning' => $target->positioning,
+            'target_titles' => $target->target_titles ?? [],
+            'criteria' => $target->criteria ?? [],
+        ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+
+        return $this->getPrompt($key)
+            ."\n\nCANDIDATE PROFILE:\n".$profileJson
+            ."\n\nTARGET:\n".$targetJson;
+    }
+
+    /**
      * Get the board keys the user is subscribed to.
      *
      * @return array<int, string>

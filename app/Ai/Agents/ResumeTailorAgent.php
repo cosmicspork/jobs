@@ -2,23 +2,21 @@
 
 namespace App\Ai\Agents;
 
-use App\Ai\Tools\GetProfile;
-use App\Ai\Tools\GetTargetProfile;
 use App\Models\TargetProfile;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
-use Laravel\Ai\Contracts\HasTools;
-use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Stringable;
 
 #[MaxTokens(4096)]
 #[Temperature(0.5)]
-class ResumeTailorAgent implements Agent, HasStructuredOutput, HasTools
+class ResumeTailorAgent implements Agent, HasProviderOptions, HasStructuredOutput
 {
     use Promptable;
 
@@ -44,18 +42,18 @@ class ResumeTailorAgent implements Agent, HasStructuredOutput, HasTools
 
     public function instructions(): Stringable|string
     {
-        return $this->user->getPrompt('resume');
+        return $this->user->getAgentInstructions('resume', $this->target);
     }
 
     /**
-     * @return Tool[]
+     * @return array<string, mixed>
      */
-    public function tools(): iterable
+    public function providerOptions(Lab|string $provider): array
     {
-        return [
-            new GetProfile($this->user),
-            new GetTargetProfile($this->target),
-        ];
+        return match ($provider) {
+            Lab::Anthropic, 'anthropic' => ['cache_control' => ['type' => 'ephemeral']],
+            default => [],
+        };
     }
 
     public function schema(JsonSchema $schema): array

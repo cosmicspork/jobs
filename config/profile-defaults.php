@@ -20,13 +20,11 @@ return [
         user summary. Score against THIS target's positioning,
         target_titles, and criteria — nothing else.
 
-        STEP 1 — GATHER CONTEXT:
-        - GetProfile: candidate identity (skills, experience, education).
-        - GetTargetProfile: the target (name, positioning, target_titles,
-          criteria).
-        - The job listing is provided inline in the user message.
+        CONTEXT:
+        The candidate profile and active target are appended to this system
+        prompt below. The job listing is provided inline in the user message.
 
-        STEP 2 — RELEVANCE CLASSIFICATION:
+        STEP 1 — RELEVANCE CLASSIFICATION:
         Classify into one of three tiers:
 
         - "relevant": Strong alignment with the target's positioning,
@@ -76,7 +74,7 @@ return [
            description, and listed salary are positive transparency
            signals.
 
-        STEP 3 — EXTRACT SIGNALS:
+        STEP 2 — EXTRACT SIGNALS:
         - matched_skills: candidate skills that this listing calls for.
         - gaps: skills/requirements the candidate is missing or light on.
         - posting_quality_signals: transparency signals worth noting
@@ -101,15 +99,12 @@ return [
         this resume entirely against THIS target's positioning,
         target_titles, and criteria.
 
-        STEP 1 — GATHER CONTEXT:
-        - GetProfile: candidate identity (summary, skills, experience,
-          education).
-        - GetTargetProfile: the target (positioning, target_titles,
-          criteria).
-        - The job listing being applied to is provided inline in the user
-          message.
+        CONTEXT:
+        The candidate profile and active target are appended to this system
+        prompt below. The job listing being applied to is provided inline
+        in the user message.
 
-        STEP 2 — SUMMARY:
+        STEP 1 — SUMMARY:
         Lead with the target's "positioning" — that is the angle for this
         application. Use the candidate's "summary" only for identity
         context (technical depth, scope, current work) to anchor the
@@ -117,7 +112,7 @@ return [
         posting without losing the candidate's voice. 2-3 sentences,
         first person implied.
 
-        STEP 3 — SKILLS SELECTION:
+        STEP 2 — SKILLS SELECTION:
         Choose 10-12 skills from the candidate's "skills" list that the
         listing emphasizes and that fit the target. Prefer exact-keyword
         matches with the posting for ATS compatibility. Do not invent
@@ -127,7 +122,7 @@ return [
         if the target is a hands-on IC role and the listing is technical,
         lead with technical skills.
 
-        STEP 4 — EXPERIENCE TAILORING:
+        STEP 3 — EXPERIENCE TAILORING:
         Return experience entries as structured objects with role, company,
         period, and tailored highlights.
 
@@ -148,7 +143,7 @@ return [
         - Each metric should be discussable in an interview.
         - Never fabricate experience or inflate numbers.
 
-        STEP 5 — ATS KEYWORDS:
+        STEP 4 — ATS KEYWORDS:
         Identify key terms from the posting and ensure they appear
         naturally in skills and experience bullets. Return matched terms
         in keyword_matches.
@@ -168,10 +163,10 @@ return [
         may represent different directions; ignore them. Frame everything
         against THIS target's positioning.
 
-        GATHER CONTEXT:
-        - GetProfile: candidate identity.
-        - GetTargetProfile: target positioning, target_titles, criteria.
-        - The job listing is provided inline in the user message.
+        CONTEXT:
+        The candidate profile and active target are appended to this system
+        prompt below. The job listing is provided inline in the user
+        message.
 
         WORD LIMIT: Body under 300 words. Brevity demonstrates
         communication skill and respect for the reader's time.
@@ -233,11 +228,10 @@ return [
         may represent different directions; ignore them. Frame each
         suggested answer against THIS target's positioning.
 
-        GATHER CONTEXT:
-        - GetProfile: candidate identity.
-        - GetTargetProfile: target positioning, target_titles, criteria.
-        - The job listing is provided inline in the user message when a
-          listing has been linked to the question set.
+        CONTEXT:
+        The candidate profile and active target are appended to this system
+        prompt below. The job listing (when linked to the question set) is
+        provided inline in the user message.
 
         For each question-answer pair, provide:
 

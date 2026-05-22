@@ -2,8 +2,6 @@
 
 namespace App\Ai\Agents;
 
-use App\Ai\Tools\GetProfile;
-use App\Ai\Tools\GetTargetProfile;
 use App\Models\TargetProfile;
 use App\Models\User;
 use App\Relevance;
@@ -13,15 +11,13 @@ use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
-use Laravel\Ai\Contracts\HasTools;
-use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Stringable;
 
 #[MaxTokens(2048)]
 #[Temperature(0.3)]
-class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput, HasTools
+class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput
 {
     use Promptable;
 
@@ -49,7 +45,7 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput, 
 
     public function instructions(): Stringable|string
     {
-        return $this->user->getPrompt('scorer');
+        return $this->user->getAgentInstructions('scorer', $this->target);
     }
 
     /**
@@ -61,17 +57,6 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput, 
             Lab::Anthropic, 'anthropic' => ['cache_control' => ['type' => 'ephemeral']],
             default => [],
         };
-    }
-
-    /**
-     * @return Tool[]
-     */
-    public function tools(): iterable
-    {
-        return [
-            new GetProfile($this->user),
-            new GetTargetProfile($this->target),
-        ];
     }
 
     public function schema(JsonSchema $schema): array

@@ -59,3 +59,36 @@ it('exposes experience_years on getProfileData', function () {
 
     expect($user->getProfileData()['experience_years'])->toBe('9+');
 });
+
+it('composes agent instructions in static-prompt → profile → target order', function () {
+    $user = User::factory()->create([
+        'prompts' => ['scorer' => 'STATIC PROMPT'],
+        'name' => 'Sample Candidate',
+        'skills' => ['PHP'],
+    ]);
+    $target = targetFor($user, [
+        'name' => 'Senior PHP',
+        'positioning' => 'Backend engineer.',
+        'target_titles' => ['Senior PHP'],
+        'criteria' => ['remote' => true],
+    ]);
+
+    $instructions = $user->getAgentInstructions('scorer', $target);
+
+    expect($instructions)->toStartWith('STATIC PROMPT')
+        ->and($instructions)->toContain('CANDIDATE PROFILE:')
+        ->and($instructions)->toContain('"name": "Sample Candidate"')
+        ->and($instructions)->toContain('TARGET:')
+        ->and($instructions)->toContain('"name": "Senior PHP"');
+
+    expect(strpos($instructions, 'CANDIDATE PROFILE:'))
+        ->toBeLessThan(strpos($instructions, 'TARGET:'));
+});
+
+it('is byte-identical across repeat calls for the same user + target', function () {
+    $user = User::factory()->create();
+    $target = targetFor($user);
+
+    expect($user->getAgentInstructions('resume', $target))
+        ->toBe($user->getAgentInstructions('resume', $target));
+});
