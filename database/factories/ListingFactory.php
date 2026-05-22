@@ -29,6 +29,21 @@ class ListingFactory extends Factory
             'board' => fake()->randomElement(['hn', 'larajobs']),
             'raw_data' => [],
             'scraped_at' => now(),
+            'enriched_at' => now(),
+            'enrichment_source' => 'inline',
         ];
+    }
+
+    /**
+     * State for listings that came from an enrichment-required board (e.g.
+     * LaraJobs) and haven't yet been processed by EnrichListing.
+     */
+    public function awaitingEnrichment(): static
+    {
+        return $this->state(fn () => [
+            'board' => 'larajobs',
+            'enriched_at' => null,
+            'enrichment_source' => null,
+        ]);
     }
 }

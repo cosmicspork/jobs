@@ -73,10 +73,47 @@ class ScrapeBoard implements ShouldQueue
             ];
         }
 
-        Listing::query()->upsert($payload, ['source_url'], [
-            'title', 'company', 'url', 'description', 'salary_min', 'salary_max',
-            'remote', 'board', 'raw_data', 'scraped_at', 'updated_at',
-        ]);
+        $requiresEnrichment = (bool) config("boards.{$this->boardKey}.requires_enrichment", false);
+
+        // Boards whose scraper already delivers a real description are
+        // marked enriched at insertion time so the scoring gate lets them
+        // through immediately. Enrichment-required boards stay null until
+        // EnrichListing rewrites the description.
+        if (! $requiresEnrichment) {
+            foreach ($payload as &$row) {
+                $row['enriched_at'] = $now;
+                $row['enrichment_source'] = 'inline';
+            }
+            unset($row);
+        }
+
+        $columnsToUpdate = ['title', 'company', 'url', 'salary_min', 'salary_max',
+            'remote', 'board', 'raw_data', 'scraped_at', 'updated_at'];
+
+        // For boards that publish stub descriptions and rely on
+        // EnrichListing to write the real one, don't overwrite an
+        // enriched description on re-scrape — we'd lose the good copy
+        // until the next enrichment cycle.
+        if (! $requiresEnrichment) {
+            $columnsToUpdate[] = 'description';
+            $columnsToUpdate[] = 'enriched_at';
+            $columnsToUpdate[] = 'enrichment_source';
+        }
+
+        Listing::query()->upsert($payload, ['source_url'], $columnsToUpdate);
+
+        if ($requiresEnrichment) {
+            // Newly-created rows from this board need their description
+            // resolved from the linked ATS/career page before scoring.
+            foreach ($newListingIds as $listingId) {
+                /** @var Listing|null $listing */
+                $listing = Listing::find($listingId);
+
+                if ($listing !== null) {
+                    EnrichListing::dispatch($listing);
+                }
+            }
+        }
 
         $created = count($newListingIds);
 

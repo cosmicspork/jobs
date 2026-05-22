@@ -45,6 +45,8 @@ class Listing extends Model
         'board',
         'raw_data',
         'scraped_at',
+        'enriched_at',
+        'enrichment_source',
         'created_by_user_id',
     ];
 
@@ -111,6 +113,7 @@ class Listing extends Model
             'raw_data' => 'array',
             'remote' => 'boolean',
             'scraped_at' => 'datetime',
+            'enriched_at' => 'datetime',
             'relevance' => Relevance::class,
             'scored_at' => 'datetime',
             'read_at' => 'datetime',

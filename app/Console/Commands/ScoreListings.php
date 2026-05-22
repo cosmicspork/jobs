@@ -30,7 +30,7 @@ class ScoreListings extends Command
         /** @var array<int, User> $cappedUsers */
         $cappedUsers = [];
 
-        $counts = ['dispatched' => 0, 'filtered' => 0, 'skippedIncomplete' => 0, 'skippedCap' => 0, 'skippedInactiveTarget' => 0];
+        $counts = ['dispatched' => 0, 'filtered' => 0, 'skippedIncomplete' => 0, 'skippedCap' => 0, 'skippedInactiveTarget' => 0, 'skippedAwaitingEnrichment' => 0];
 
         ListingUser::query()
             ->whereNull('scored_at')
@@ -52,8 +52,8 @@ class ScoreListings extends Command
         }
 
         $this->info(sprintf(
-            'Dispatched: %d | Filtered: %d | Skipped (incomplete profile): %d | Skipped (inactive target): %d | Skipped (cap): %d',
-            $counts['dispatched'], $counts['filtered'], $counts['skippedIncomplete'], $counts['skippedInactiveTarget'], $counts['skippedCap']
+            'Dispatched: %d | Filtered: %d | Skipped (incomplete profile): %d | Skipped (inactive target): %d | Skipped (cap): %d | Skipped (awaiting enrichment): %d',
+            $counts['dispatched'], $counts['filtered'], $counts['skippedIncomplete'], $counts['skippedInactiveTarget'], $counts['skippedCap'], $counts['skippedAwaitingEnrichment']
         ));
 
         return self::SUCCESS;
@@ -77,6 +77,17 @@ class ScoreListings extends Command
 
         if ($user === null || ! $target?->is_active) {
             $counts['skippedInactiveTarget']++;
+
+            return;
+        }
+
+        // Listings from enrichment-required boards have a stub description
+        // until EnrichListing runs. Scoring against the stub would waste
+        // tokens and yield a bad classification — wait for enrichment.
+        // EnrichListing dispatches ScoreListing itself on completion, so
+        // unscored pivots get picked up regardless.
+        if ($pivot->listing->enriched_at === null) {
+            $counts['skippedAwaitingEnrichment']++;
 
             return;
         }

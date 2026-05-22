@@ -17,6 +17,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ListingInfolist
 {
@@ -61,7 +62,9 @@ class ListingInfolist
                             ->visible(fn (Listing $record): bool => filled($record->source_url) && $record->source_url !== $record->url),
                         TextEntry::make('description')
                             ->html()
-                            ->formatStateUsing(fn (?string $state): string => nl2br(e($state ?? '')))
+                            ->formatStateUsing(fn (?string $state): string => $state
+                                ? Str::markdown($state)
+                                : '')
                             ->placeholder('No description'),
                         Grid::make(4)->schema([
                             TextEntry::make('scraped_at')

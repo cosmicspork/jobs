@@ -66,6 +66,26 @@ it('reports when no unscored listings exist', function () {
         ->expectsOutputToContain('No unscored listings found');
 });
 
+it('skips listings awaiting enrichment so the scorer never sees a stub description', function () {
+    Queue::fake();
+
+    $pending = Listing::factory()->awaitingEnrichment()->create();
+    $ready = Listing::factory()->create(['remote' => true]);
+
+    foreach ([$pending, $ready] as $listing) {
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $this->user->id,
+            'target_profile_id' => $this->target->id,
+        ]);
+    }
+
+    $this->artisan('jobs:score')->assertSuccessful();
+
+    Queue::assertPushed(ScoreListing::class, 1);
+    Queue::assertPushed(ScoreListing::class, fn ($job) => $job->listing->id === $ready->id);
+});
+
 it('skips users whose profiles are incomplete and logs a warning', function () {
     Queue::fake();
     Log::spy();
