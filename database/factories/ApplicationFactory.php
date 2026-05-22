@@ -30,8 +30,26 @@ class ApplicationFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => 'ready',
-            'resume_path' => 'resumes/test.pdf',
-            'cover_letter_path' => 'cover-letters/test.pdf',
+            'resume_content' => [
+                'summary' => 'A tailored professional summary.',
+                'skills' => ['PHP', 'Laravel'],
+                'experience' => [
+                    [
+                        'role' => 'Software Engineer',
+                        'company' => 'Acme Industries',
+                        'period' => '2022 - Present',
+                        'highlights' => ['Built things.'],
+                    ],
+                ],
+                'education' => ['B.S. Computer Science — Example University'],
+                'keyword_matches' => ['Laravel'],
+            ],
+            'cover_letter_content' => [
+                'subject_line' => 'Senior Engineer',
+                'body' => "First paragraph.\n\nSecond paragraph.",
+                'word_count' => 12,
+                'posting_detail_referenced' => 'queue layer',
+            ],
         ]);
     }
 }

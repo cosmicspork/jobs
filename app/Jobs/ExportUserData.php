@@ -36,11 +36,6 @@ class ExportUserData implements ShouldQueue
             $zip->addFromString('manifest.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
             $zip->addFromString('README.txt', $this->readme($manifest));
 
-            foreach ($manifest['applications'] as $application) {
-                $this->addStoredFile($zip, $application['resume_path'] ?? null);
-                $this->addStoredFile($zip, $application['cover_letter_path'] ?? null);
-            }
-
             $zip->close();
 
             $stream = fopen($tempZipPath, 'r');
@@ -66,15 +61,6 @@ class ExportUserData implements ShouldQueue
         Log::info("Generated user data export for user {$this->user->id} at {$storagePath}");
     }
 
-    protected function addStoredFile(ZipArchive $zip, ?string $path): void
-    {
-        if ($path === null || $path === '' || ! Storage::exists($path)) {
-            return;
-        }
-
-        $zip->addFromString($path, Storage::get($path));
-    }
-
     /**
      * @param  array<string, mixed>  $manifest
      */
@@ -91,12 +77,11 @@ class ExportUserData implements ShouldQueue
             manifest.json
               Everything we have on you: profile, target profiles, applications,
               question sets, listing interactions, AI usage, board subscriptions.
+              Each application's tailored resume and cover letter are stored
+              inline as structured JSON under `applications[].resume_content`
+              and `applications[].cover_letter_content`.
               Sensitive fields (passwords, admin flags, internal scoring state)
               are excluded by design.
-
-            resumes/  &  cover-letters/
-              The PDFs generated for your applications, at the same paths
-              referenced in manifest.json.
             TXT;
     }
 }

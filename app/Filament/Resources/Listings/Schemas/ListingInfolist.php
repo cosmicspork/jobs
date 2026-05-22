@@ -16,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ListingInfolist
@@ -183,24 +182,20 @@ class ListingInfolist
                                     ->placeholder('Not applied')
                                     ->color('gray'),
                                 Actions::make([
-                                    Action::make('downloadResume')
+                                    Action::make('printResume')
                                         ->label('Resume')
-                                        ->icon(Heroicon::OutlinedArrowDownTray)
+                                        ->icon(Heroicon::OutlinedPrinter)
                                         ->color('gray')
-                                        ->url(fn (Application $application): ?string => $application->resume_path
-                                            ? Storage::url($application->resume_path)
-                                            : null)
+                                        ->url(fn (Application $application): string => route('applications.print.resume', $application))
                                         ->openUrlInNewTab()
-                                        ->visible(fn (Application $application): bool => filled($application->resume_path)),
-                                    Action::make('downloadCoverLetter')
+                                        ->visible(fn (Application $application): bool => filled($application->resume_content)),
+                                    Action::make('printCoverLetter')
                                         ->label('Cover letter')
                                         ->icon(Heroicon::OutlinedEnvelope)
                                         ->color('gray')
-                                        ->url(fn (Application $application): ?string => $application->cover_letter_path
-                                            ? Storage::url($application->cover_letter_path)
-                                            : null)
+                                        ->url(fn (Application $application): string => route('applications.print.cover-letter', $application))
                                         ->openUrlInNewTab()
-                                        ->visible(fn (Application $application): bool => filled($application->cover_letter_path)),
+                                        ->visible(fn (Application $application): bool => filled($application->cover_letter_content)),
                                 ])
                                     ->columnSpanFull(),
                                 TextEntry::make('created_at')

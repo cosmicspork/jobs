@@ -31,8 +31,10 @@ it('can be marked as ready', function () {
     $application = Application::factory()->ready()->create();
 
     expect($application->status)->toBe(ApplicationStatus::Ready)
-        ->and($application->resume_path)->not->toBeNull()
-        ->and($application->cover_letter_path)->not->toBeNull();
+        ->and($application->resume_content)->toBeArray()
+        ->and($application->resume_content['summary'])->toBeString()
+        ->and($application->cover_letter_content)->toBeArray()
+        ->and($application->cover_letter_content['body'])->toBeString();
 });
 
 it('generates resume only', function () {

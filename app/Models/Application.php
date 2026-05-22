@@ -32,8 +32,8 @@ class Application extends Model
         'user_id',
         'target_profile_id',
         'status',
-        'resume_path',
-        'cover_letter_path',
+        'resume_content',
+        'cover_letter_content',
         'applied_at',
     ];
 
@@ -91,6 +91,8 @@ class Application extends Model
         return [
             'status' => ApplicationStatus::class,
             'applied_at' => 'datetime',
+            'resume_content' => 'array',
+            'cover_letter_content' => 'array',
         ];
     }
 

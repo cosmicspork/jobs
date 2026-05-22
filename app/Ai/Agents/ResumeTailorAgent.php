@@ -67,6 +67,7 @@ class ResumeTailorAgent implements Agent, HasProviderOptions, HasStructuredOutpu
                 'period' => $schema->string()->required(),
                 'highlights' => $schema->array()->items($schema->string())->required(),
             ]))->required(),
+            'education' => $schema->array()->items($schema->string())->required(),
             'keyword_matches' => $schema->array()->items($schema->string()),
         ];
     }

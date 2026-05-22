@@ -91,8 +91,8 @@ class UserDataExporter
                 'listing' => $this->listingSnapshot($a->listing),
                 'target_profile_id' => $a->target_profile_id,
                 'status' => $a->status?->value,
-                'resume_path' => $a->resume_path,
-                'cover_letter_path' => $a->cover_letter_path,
+                'resume_content' => $a->resume_content,
+                'cover_letter_content' => $a->cover_letter_content,
                 'applied_at' => $a->applied_at?->toIso8601String(),
                 'created_at' => $a->created_at?->toIso8601String(),
             ])

@@ -143,7 +143,13 @@ return [
         - Each metric should be discussable in an interview.
         - Never fabricate experience or inflate numbers.
 
-        STEP 4 — ATS KEYWORDS:
+        STEP 4 — EDUCATION:
+        Return the candidate's education entries verbatim from the profile,
+        each as a single string in the education array. Preserve degree,
+        institution, and year as provided. Education rarely needs
+        reordering or rewriting for a given listing — pass it through.
+
+        STEP 5 — ATS KEYWORDS:
         Identify key terms from the posting and ensure they appear
         naturally in skills and experience bullets. Return matched terms
         in keyword_matches.

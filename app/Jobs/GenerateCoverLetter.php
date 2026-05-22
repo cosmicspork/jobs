@@ -6,13 +6,10 @@ use App\Ai\Agents\CoverLetterAgent;
 use App\Ai\ProviderFreeze;
 use App\Jobs\Concerns\FreezesAiProvider;
 use App\Models\Application;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Laravel\Ai\Exceptions\AiException;
 
 class GenerateCoverLetter implements ShouldQueue
@@ -26,7 +23,6 @@ class GenerateCoverLetter implements ShouldQueue
         $listing = $this->application->listing;
         $user = $this->application->user;
         $target = $this->application->targetProfile;
-        $profile = $user->getProfileData();
 
         $provider = config('ai.agents.cover_letter.provider');
 
@@ -51,20 +47,15 @@ class GenerateCoverLetter implements ShouldQueue
             throw $e;
         }
 
-        $pdf = Pdf::loadView('cover-letter.base', [
-            'profile' => $profile,
-            'target' => $target,
-            'subjectLine' => $response['subject_line'],
-            'body' => $response['body'],
-            'listing' => $listing,
+        $this->application->update([
+            'cover_letter_content' => [
+                'subject_line' => $response['subject_line'],
+                'body' => $response['body'],
+                'word_count' => $response['word_count'] ?? null,
+                'posting_detail_referenced' => $response['posting_detail_referenced'] ?? null,
+            ],
         ]);
 
-        $slug = Str::slug($profile['name'].'_CoverLetter');
-        $path = "cover-letters/{$slug}_{$this->application->id}.pdf";
-        Storage::put($path, $pdf->output());
-
-        $this->application->update(['cover_letter_path' => $path]);
-
-        Log::info("Generated cover letter for application {$this->application->id}");
+        Log::info("Generated cover letter content for application {$this->application->id}");
     }
 }

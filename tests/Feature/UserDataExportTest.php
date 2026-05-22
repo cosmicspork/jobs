@@ -28,7 +28,7 @@ it('queues the export job when the Profile action fires', function () {
     Queue::assertPushed(ExportUserData::class, fn ($job) => $job->user->is($user));
 });
 
-it('builds a zip with manifest.json, README, and PDFs when the job runs', function () {
+it('builds a zip with manifest.json + README and embeds resume/cover-letter JSON when the job runs', function () {
     Storage::fake();
     Mail::fake();
 
@@ -36,17 +36,12 @@ it('builds a zip with manifest.json, README, and PDFs when the job runs', functi
     $listing = Listing::factory()->create(['title' => 'Senior Laravel Developer']);
     $target = $user->targetProfiles()->first();
 
-    Storage::put('resumes/test-resume.pdf', 'fake-pdf-bytes');
-    Storage::put('cover-letters/test-cover.pdf', 'fake-cover-bytes');
-
     Application::factory()
         ->ready()
         ->create([
             'user_id' => $user->id,
             'listing_id' => $listing->id,
             'target_profile_id' => $target->id,
-            'resume_path' => 'resumes/test-resume.pdf',
-            'cover_letter_path' => 'cover-letters/test-cover.pdf',
         ]);
 
     (new ExportUserData($user))->handle(app(UserDataExporter::class));
@@ -68,11 +63,12 @@ it('builds a zip with manifest.json, README, and PDFs when the job runs', functi
         ->toHaveKey('applications')
         ->and($manifest['user'])->not->toHaveKey('password')
         ->and($manifest['user'])->not->toHaveKey('is_admin')
-        ->and($manifest['user']['email'])->toBe($user->email);
+        ->and($manifest['user']['email'])->toBe($user->email)
+        ->and($manifest['applications'][0]['resume_content'])->toBeArray()
+        ->and($manifest['applications'][0]['resume_content']['summary'])->toBeString()
+        ->and($manifest['applications'][0]['cover_letter_content']['body'])->toBeString();
 
     expect($zip->getFromName('README.txt'))->toContain('Schema version');
-    expect($zip->getFromName('resumes/test-resume.pdf'))->toBe('fake-pdf-bytes');
-    expect($zip->getFromName('cover-letters/test-cover.pdf'))->toBe('fake-cover-bytes');
 
     $zip->close();
 });
