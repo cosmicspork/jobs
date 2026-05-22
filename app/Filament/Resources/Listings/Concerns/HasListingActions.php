@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Listings\Concerns;
 
-use App\Filament\Pages\ApplicationQuestions;
+use App\ApplicationStatus;
 use App\Jobs\ScoreListing;
 use App\Models\Application;
 use App\Models\Listing;
@@ -10,72 +10,101 @@ use App\Models\ListingUser;
 use App\Models\TargetProfile;
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
 
 trait HasListingActions
 {
     /**
-     * @return array<int, Action>
+     * Replaces the legacy three-button Generate/Cover/Both split. Asks for
+     * target + which artifacts to draft + optional extra-instructions in one
+     * modal, creates the Application, dispatches generation, and redirects
+     * to the workspace.
      */
-    protected function getGenerateActions(): array
+    protected function getStartApplicationAction(): Action
     {
-        return [
-            $this->buildGenerateAction(
-                name: 'generateResume',
-                label: 'Generate Resume',
-                icon: 'heroicon-o-document-text',
-                startedTitle: 'Resume generation started',
-                buildBody: fn (Listing $l, TargetProfile $t): string => "Generating resume for {$l->company} ({$t->name})...",
-                dispatch: fn (Listing $l, TargetProfile $t) => Application::generateResume($l, auth()->user(), $t),
-            ),
-            $this->buildGenerateAction(
-                name: 'generateCoverLetter',
-                label: 'Generate Cover Letter',
-                icon: 'heroicon-o-envelope',
-                startedTitle: 'Cover letter generation started',
-                buildBody: fn (Listing $l, TargetProfile $t): string => "Generating cover letter for {$l->company} ({$t->name})...",
-                dispatch: fn (Listing $l, TargetProfile $t) => Application::generateCoverLetter($l, auth()->user(), $t),
-            ),
-            $this->buildGenerateAction(
-                name: 'generateBoth',
-                label: 'Generate Both',
-                icon: 'heroicon-o-document-duplicate',
-                startedTitle: 'Application generation started',
-                buildBody: fn (Listing $l, TargetProfile $t): string => "Generating resume and cover letter for {$l->company} ({$t->name})...",
-                dispatch: fn (Listing $l, TargetProfile $t) => Application::generateBoth($l, auth()->user(), $t),
-            ),
-        ];
-    }
-
-    private function buildGenerateAction(
-        string $name,
-        string $label,
-        string $icon,
-        string $startedTitle,
-        \Closure $buildBody,
-        \Closure $dispatch,
-    ): Action {
-        return Action::make($name)
-            ->label($label)
-            ->icon($icon)
+        return Action::make('startApplication')
+            ->label('Start application')
+            ->icon('heroicon-o-rocket-launch')
             ->color('primary')
-            ->schema(fn () => $this->buildTargetSelectSchema())
-            ->requiresConfirmation()
-            ->action(function (array $data) use ($startedTitle, $buildBody, $dispatch): void {
+            ->schema(function () {
+                /** @var Listing $listing */
+                $listing = $this->record;
+
+                return array_merge(
+                    $this->buildTargetSelectSchema(),
+                    [
+                        CheckboxList::make('artifacts')
+                            ->label('What to draft now?')
+                            ->options([
+                                'resume' => 'Resume',
+                                'cover_letter' => 'Cover letter',
+                            ])
+                            ->default(['resume', 'cover_letter'])
+                            ->columns(2)
+                            ->bulkToggleable()
+                            ->helperText('Leave both unchecked to just create an empty workspace.'),
+                        Textarea::make('extra_instructions')
+                            ->label('Anything else the AI should know?')
+                            ->placeholder('Optional. e.g. "emphasize the queue-layer work" or "tone less formal"')
+                            ->rows(3)
+                            ->default(function () use ($listing): ?string {
+                                $existing = Application::query()
+                                    ->where('user_id', auth()->id())
+                                    ->where('listing_id', $listing->id)
+                                    ->latest()
+                                    ->value('extra_instructions');
+
+                                return $existing;
+                            }),
+                    ]
+                );
+            })
+            ->action(function (array $data) {
                 /** @var Listing $listing */
                 $listing = $this->record;
                 $target = $this->resolveTargetForAction($data);
 
                 if (! $target instanceof TargetProfile) {
-                    Notification::make()->title('No active target')->body('Add an active target before generating an application.')->danger()->send();
+                    Notification::make()
+                        ->title('No active target')
+                        ->body('Add an active target before starting an application.')
+                        ->danger()
+                        ->send();
 
                     return;
                 }
 
-                $dispatch($listing, $target);
-                Notification::make()->title($startedTitle)->body($buildBody($listing, $target))->success()->send();
+                $artifacts = $data['artifacts'] ?? [];
+                $extra = trim((string) ($data['extra_instructions'] ?? '')) ?: null;
+
+                $application = match (true) {
+                    in_array('resume', $artifacts, true) && in_array('cover_letter', $artifacts, true) => Application::generateBoth($listing, auth()->user(), $target, $extra),
+                    in_array('resume', $artifacts, true) => Application::generateResume($listing, auth()->user(), $target, $extra),
+                    in_array('cover_letter', $artifacts, true) => Application::generateCoverLetter($listing, auth()->user(), $target, $extra),
+                    default => Application::firstOrCreate(
+                        [
+                            'listing_id' => $listing->id,
+                            'user_id' => auth()->id(),
+                            'target_profile_id' => $target->id,
+                        ],
+                        [
+                            'status' => ApplicationStatus::Ready,
+                            'extra_instructions' => $extra,
+                        ],
+                    ),
+                };
+
+                Notification::make()
+                    ->title('Application started')
+                    ->body("Workspace ready for {$listing->company} ({$target->name}).")
+                    ->success()
+                    ->send();
+
+                return redirect(route('filament.admin.resources.applications.edit', $application));
             });
     }
 
@@ -134,23 +163,6 @@ trait HasListingActions
                     ->title($pivot?->fresh()?->dismissed_at ? 'Listing dismissed' : 'Listing restored')
                     ->success()
                     ->send();
-            });
-    }
-
-    protected function getApplicationQuestionsAction(): Action
-    {
-        return Action::make('applicationQuestions')
-            ->label('Application Questions')
-            ->icon('heroicon-o-chat-bubble-left-right')
-            ->visible(fn (): bool => Application::query()
-                ->where('user_id', auth()->id())
-                ->where('listing_id', $this->record->getKey())
-                ->exists())
-            ->url(function (): string {
-                /** @var Listing $listing */
-                $listing = $this->record;
-
-                return ApplicationQuestions::getUrl(['listing' => $listing->id]);
             });
     }
 

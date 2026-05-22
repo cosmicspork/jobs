@@ -34,6 +34,8 @@ class Application extends Model
         'status',
         'resume_content',
         'cover_letter_content',
+        'extra_instructions',
+        'notes',
         'applied_at',
     ];
 
@@ -61,23 +63,23 @@ class Application extends Model
         return $this->belongsTo(TargetProfile::class);
     }
 
-    public static function generateResume(Listing $listing, User $user, TargetProfile $target): static
+    public static function generateResume(Listing $listing, User $user, TargetProfile $target, ?string $extraInstructions = null): static
     {
-        return static::dispatchGeneration($listing, $user, $target, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, $target, $extraInstructions, fn ($app) => [
             new GenerateResume($app),
         ]);
     }
 
-    public static function generateCoverLetter(Listing $listing, User $user, TargetProfile $target): static
+    public static function generateCoverLetter(Listing $listing, User $user, TargetProfile $target, ?string $extraInstructions = null): static
     {
-        return static::dispatchGeneration($listing, $user, $target, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, $target, $extraInstructions, fn ($app) => [
             new GenerateCoverLetter($app),
         ]);
     }
 
-    public static function generateBoth(Listing $listing, User $user, TargetProfile $target): static
+    public static function generateBoth(Listing $listing, User $user, TargetProfile $target, ?string $extraInstructions = null): static
     {
-        return static::dispatchGeneration($listing, $user, $target, fn ($app) => [
+        return static::dispatchGeneration($listing, $user, $target, $extraInstructions, fn ($app) => [
             new GenerateResume($app),
             new GenerateCoverLetter($app),
         ]);
@@ -99,7 +101,7 @@ class Application extends Model
     /**
      * @param  callable(self): array<ShouldQueue>  $jobs
      */
-    protected static function dispatchGeneration(Listing $listing, User $user, TargetProfile $target, callable $jobs): static
+    protected static function dispatchGeneration(Listing $listing, User $user, TargetProfile $target, ?string $extraInstructions, callable $jobs): static
     {
         /** @var static $application */
         $application = static::firstOrCreate(
@@ -110,6 +112,15 @@ class Application extends Model
             ],
             ['status' => ApplicationStatus::Generating],
         );
+
+        // The extra-instructions field is non-destructive: caller passed
+        // null → keep whatever was there. Caller passed a string → overwrite.
+        // Empty string from a UI textarea is treated as "clear".
+        if ($extraInstructions !== null) {
+            $application->update(['extra_instructions' => $extraInstructions !== '' ? $extraInstructions : null]);
+        }
+
+        $application->update(['status' => ApplicationStatus::Generating]);
 
         Bus::batch($jobs($application))
             ->then(new MarkApplicationReady($application))

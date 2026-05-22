@@ -39,7 +39,7 @@ class EditListing extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ...$this->getGenerateActions(),
+            $this->getStartApplicationAction(),
             $this->getToggleStarredAction(),
             $this->getJobLinkAction(),
         ];

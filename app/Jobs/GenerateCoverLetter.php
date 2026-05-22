@@ -32,11 +32,19 @@ class GenerateCoverLetter implements ShouldQueue
 
         $listingJson = json_encode($listing->toAgentPayload(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
+        $extra = trim((string) $this->application->extra_instructions);
+
+        $userMessage = "Write a cover letter for this job posting:\n```json\n{$listingJson}\n```";
+
+        if ($extra !== '') {
+            $userMessage .= "\n\nADDITIONAL INSTRUCTIONS FROM THE CANDIDATE:\n{$extra}";
+        }
+
         $agent = new CoverLetterAgent($user, $target);
 
         try {
             $response = $agent->prompt(
-                "Write a cover letter for this job posting:\n```json\n{$listingJson}\n```",
+                $userMessage,
                 provider: $agent->providers() ?: null,
             );
         } catch (AiException $e) {

@@ -182,20 +182,11 @@ class ListingInfolist
                                     ->placeholder('Not applied')
                                     ->color('gray'),
                                 Actions::make([
-                                    Action::make('printResume')
-                                        ->label('Resume')
-                                        ->icon(Heroicon::OutlinedPrinter)
-                                        ->color('gray')
-                                        ->url(fn (Application $application): string => route('applications.print.resume', $application))
-                                        ->openUrlInNewTab()
-                                        ->visible(fn (Application $application): bool => filled($application->resume_content)),
-                                    Action::make('printCoverLetter')
-                                        ->label('Cover letter')
-                                        ->icon(Heroicon::OutlinedEnvelope)
-                                        ->color('gray')
-                                        ->url(fn (Application $application): string => route('applications.print.cover-letter', $application))
-                                        ->openUrlInNewTab()
-                                        ->visible(fn (Application $application): bool => filled($application->cover_letter_content)),
+                                    Action::make('openWorkspace')
+                                        ->label('Open application →')
+                                        ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                                        ->color('primary')
+                                        ->url(fn (Application $application): string => route('filament.admin.resources.applications.edit', $application)),
                                 ])
                                     ->columnSpanFull(),
                                 TextEntry::make('created_at')

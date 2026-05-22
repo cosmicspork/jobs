@@ -64,12 +64,7 @@ class ViewListing extends ViewRecord
     public function applicationActions(): array
     {
         return [
-            ActionGroup::make($this->getGenerateActions())
-                ->label('Generate')
-                ->icon('heroicon-m-document-duplicate')
-                ->color('primary')
-                ->button(),
-            $this->getApplicationQuestionsAction(),
+            $this->getStartApplicationAction(),
         ];
     }
 }
