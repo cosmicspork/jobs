@@ -54,7 +54,6 @@ class UserFactory extends Factory
     public function manager(): static
     {
         return $this->state([
-            'experience_years' => '12+',
             'summary' => 'Engineering manager with 12+ years building and leading teams across backend and platform engineering. Experienced hiring, coaching, and shipping large cross-functional initiatives.',
             'skills' => [
                 'Hiring & Coaching',
@@ -87,7 +86,15 @@ class UserFactory extends Factory
                     ],
                 ],
             ],
-            'education' => ['B.S. Computer Science, State University'],
+            'education' => [
+                [
+                    'qualification' => 'B.S.',
+                    'institution' => 'State University',
+                    'field_of_study' => 'Computer Science',
+                    'period' => '2008 - 2012',
+                    'highlights' => [],
+                ],
+            ],
         ])->afterCreating(function (User $user): void {
             TargetProfileFactory::new()->manager()->for($user)->create();
         });
@@ -99,7 +106,6 @@ class UserFactory extends Factory
     public function ic(): static
     {
         return $this->state([
-            'experience_years' => '8+',
             'summary' => 'Senior software engineer with 8+ years of experience in full-stack web development, focused on Laravel, TypeScript, and developer productivity.',
             'skills' => [
                 'PHP', 'TypeScript', 'Go', 'SQL',
@@ -127,7 +133,17 @@ class UserFactory extends Factory
                     ],
                 ],
             ],
-            'education' => ['B.S. Computer Science, Local University'],
+            'education' => [
+                [
+                    'qualification' => 'B.S.',
+                    'institution' => 'Local University',
+                    'field_of_study' => 'Computer Science',
+                    'period' => '2013 - 2017',
+                    'highlights' => [
+                        'Capstone: open-source contributions to a Laravel package',
+                    ],
+                ],
+            ],
         ])->afterCreating(function (User $user): void {
             TargetProfileFactory::new()->ic()->for($user)->create();
         });

@@ -29,7 +29,7 @@ it('creates a user, sends welcome + reset emails, and never exposes the password
 
     $user = User::query()->where('email', 'new@example.com')->firstOrFail();
 
-    expect($user->prompts)->toBeNull()
+    expect($user->summary)->toBeNull()
         ->and($user->is_admin)->toBeFalse();
 
     Mail::assertSent(WelcomeUser::class, fn ($mail) => $mail->hasTo('new@example.com'));

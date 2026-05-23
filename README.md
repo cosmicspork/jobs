@@ -101,8 +101,8 @@ Manual one-offs:
   rate-limit / overload, not on cap-reached.
 - **Scoring caps** — `config/scoring.php` and the per-user
   `monthly_ai_cap_usd` column (overrides the global cap).
-- **Profile defaults** — `config/profile-defaults.php` holds the prompt
-  templates the scorer/resume/cover-letter agents use. Edit prompts here.
+- **Agent prompts** — each agent class in `app/Ai/Agents/` holds its own
+  system prompt inline (see the `instructions()` method). Edit prompts there.
 
 ## Testing
 

@@ -35,16 +35,19 @@
         }
         .header { text-align: center; margin-bottom: 14pt; }
         .header p { color: #666; font-size: 10pt; }
-        .summary, .skills, .education { margin-bottom: 10pt; }
+        .summary, .skills { margin-bottom: 10pt; }
         .skills ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6pt; }
         .skills li { background: #f0f0f0; padding: 2pt 8pt; border-radius: 3pt; font-size: 10pt; }
-        .experience-entry { margin-bottom: 10pt; page-break-inside: avoid; }
-        .experience-entry .role-line { font-weight: bold; font-size: 11pt; margin-bottom: 1pt; }
-        .experience-entry .meta-line { color: #666; font-size: 10pt; margin-bottom: 4pt; }
-        .experience-entry ul { padding-left: 16pt; }
-        .experience-entry li { margin-bottom: 3pt; }
-        .education ul { padding-left: 16pt; }
-        .education li { margin-bottom: 3pt; }
+        .experience-entry,
+        .education-entry { margin-bottom: 10pt; page-break-inside: avoid; }
+        .experience-entry .role-line,
+        .education-entry .role-line { font-weight: bold; font-size: 11pt; margin-bottom: 1pt; }
+        .experience-entry .meta-line,
+        .education-entry .meta-line { color: #666; font-size: 10pt; margin-bottom: 4pt; }
+        .experience-entry ul,
+        .education-entry ul { padding-left: 16pt; }
+        .experience-entry li,
+        .education-entry li { margin-bottom: 3pt; }
         .empty {
             background: #fff8e1;
             border: 1px dashed #d4a017;
@@ -103,13 +106,21 @@
             @endforeach
 
             <h2>Education</h2>
-            <div class="education">
-                <ul>
-                    @foreach ($content['education'] ?? [] as $degree)
-                        <li>{{ $degree }}</li>
-                    @endforeach
-                </ul>
-            </div>
+            @foreach ($content['education'] ?? [] as $entry)
+                <div class="education-entry">
+                    <div class="role-line">
+                        {{ $entry['qualification'] ?? '' }}@if (! empty($entry['field_of_study'])) in {{ $entry['field_of_study'] }}@endif — {{ $entry['institution'] ?? '' }}
+                    </div>
+                    <div class="meta-line">{{ $entry['period'] ?? '' }}</div>
+                    @if (! empty($entry['highlights']))
+                        <ul>
+                            @foreach ($entry['highlights'] as $highlight)
+                                <li>{{ $highlight }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            @endforeach
         @endif
     </div>
 
