@@ -20,10 +20,7 @@ use Illuminate\Support\Facades\DB;
  * @property string|null $summary
  * @property array<int, string>|null $skills
  * @property array<int, array<string, mixed>>|null $experience
- * @property array<int, string>|null $education
- * @property string|null $experience_years
- * @property array<string, mixed>|null $preferences
- * @property array<string, string>|null $prompts
+ * @property array<int, array<string, mixed>>|null $education
  * @property bool $is_admin
  * @property bool $digest_enabled
  * @property string $digest_time
@@ -43,9 +40,6 @@ class User extends Authenticatable implements FilamentUser
         'skills',
         'experience',
         'education',
-        'experience_years',
-        'preferences',
-        'prompts',
         'is_admin',
         'digest_enabled',
         'digest_time',
@@ -161,27 +155,16 @@ class User extends Authenticatable implements FilamentUser
             'skills' => $this->skills ?? [],
             'experience' => $this->experience ?? [],
             'education' => $this->education ?? [],
-            'experience_years' => $this->experience_years,
         ];
     }
 
     /**
-     * Get the user's AI prompt for a given agent, falling back to defaults.
+     * Render the candidate-profile + active-target context tail that every
+     * agent appends to its static system prompt. Order matters for
+     * prompt-cache reuse — profile prefix stays stable across calls for
+     * this user, only the target tail varies.
      */
-    public function getPrompt(string $key): string
-    {
-        $userPrompts = $this->prompts ?? [];
-
-        return $userPrompts[$key] ?? config("profile-defaults.prompts.{$key}", '');
-    }
-
-    /**
-     * Compose the full system-prompt instructions for an agent: base prompt
-     * followed by the candidate profile and target JSON. Order matters for
-     * prompt-cache reuse — the static prompt + profile prefix stays stable
-     * across calls for this user, so only the target tail varies.
-     */
-    public function getAgentInstructions(string $key, TargetProfile $target): string
+    public function candidateContext(TargetProfile $target): string
     {
         $profileJson = json_encode($this->getProfileData(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
@@ -192,8 +175,7 @@ class User extends Authenticatable implements FilamentUser
             'criteria' => $target->criteria ?? [],
         ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
-        return $this->getPrompt($key)
-            ."\n\nCANDIDATE PROFILE:\n".$profileJson
+        return "\n\nCANDIDATE PROFILE:\n".$profileJson
             ."\n\nTARGET:\n".$targetJson;
     }
 
@@ -366,8 +348,6 @@ class User extends Authenticatable implements FilamentUser
             'skills' => 'array',
             'experience' => 'array',
             'education' => 'array',
-            'preferences' => 'array',
-            'prompts' => 'array',
             'is_admin' => 'boolean',
             'digest_enabled' => 'boolean',
             'monthly_ai_cap_usd' => 'decimal:2',

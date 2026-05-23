@@ -13,17 +13,30 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 
 class EditApplication extends EditRecord
 {
     protected static string $resource = ApplicationResource::class;
 
-    public function getTitle(): string
+    public function getTitle(): string|Htmlable
     {
         /** @var Application $record */
         $record = $this->record;
 
-        return "Application — {$record->listing?->title} @ {$record->listing?->company}";
+        $listing = $record->listing;
+
+        if ($listing === null) {
+            return 'Application';
+        }
+
+        $url = route('filament.admin.resources.listings.view', $listing);
+        $label = e("{$listing->title} @ {$listing->company}");
+
+        return new HtmlString(
+            'Application — <a href="'.e($url).'" class="text-primary-600 hover:underline dark:text-primary-400">'.$label.'</a>'
+        );
     }
 
     protected function getHeaderActions(): array

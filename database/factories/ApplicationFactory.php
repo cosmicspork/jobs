@@ -41,7 +41,15 @@ class ApplicationFactory extends Factory
                         'highlights' => ['Built things.'],
                     ],
                 ],
-                'education' => ['B.S. Computer Science — Example University'],
+                'education' => [
+                    [
+                        'qualification' => 'B.S.',
+                        'institution' => 'Example University',
+                        'field_of_study' => 'Computer Science',
+                        'period' => '2010 - 2014',
+                        'highlights' => [],
+                    ],
+                ],
                 'keyword_matches' => ['Laravel'],
             ],
             'cover_letter_content' => [

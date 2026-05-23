@@ -1,5 +1,7 @@
 <?php
 
+use App\Ai\Agents\JobScorerAgent;
+use App\Ai\Agents\ResumeTailorAgent;
 use App\Models\User;
 
 it('returns expected keys from getProfileData', function () {
@@ -7,8 +9,13 @@ it('returns expected keys from getProfileData', function () {
         'summary' => 'A tailored summary.',
         'skills' => ['PHP', 'Laravel', 'Mentorship'],
         'experience' => [['role' => 'Dev', 'company' => 'TestCo']],
-        'education' => ['BS CS'],
-        'experience_years' => '9+',
+        'education' => [[
+            'qualification' => 'B.S.',
+            'institution' => 'Test U',
+            'field_of_study' => 'CS',
+            'period' => '2010 - 2014',
+            'highlights' => [],
+        ]],
     ]);
 
     $profile = $user->getProfileData();
@@ -20,8 +27,7 @@ it('returns expected keys from getProfileData', function () {
         'skills',
         'experience',
         'education',
-        'experience_years',
-    ])->and($profile)->not->toHaveKey('title');
+    ])->and($profile)->not->toHaveKey('experience_years');
 });
 
 it('returns skills as a flat non-empty array', function () {
@@ -36,33 +42,8 @@ it('returns skills as a flat non-empty array', function () {
         ->toContain('Mentorship');
 });
 
-it('returns prompts via getPrompt method', function () {
-    $user = User::factory()->create([
-        'prompts' => [
-            'scorer' => 'Custom scorer prompt',
-            'resume' => 'Custom resume prompt',
-            'cover_letter' => 'Custom cover letter prompt',
-            'application_questions' => 'Custom AQ prompt',
-        ],
-    ]);
-
-    expect($user->getPrompt('scorer'))->toBe('Custom scorer prompt')
-        ->and($user->getPrompt('resume'))->toBe('Custom resume prompt')
-        ->and($user->getPrompt('cover_letter'))->toBe('Custom cover letter prompt')
-        ->and($user->getPrompt('application_questions'))->toBe('Custom AQ prompt');
-});
-
-it('exposes experience_years on getProfileData', function () {
-    $user = User::factory()->create([
-        'experience_years' => '9+',
-    ]);
-
-    expect($user->getProfileData()['experience_years'])->toBe('9+');
-});
-
 it('composes agent instructions in static-prompt → profile → target order', function () {
     $user = User::factory()->create([
-        'prompts' => ['scorer' => 'STATIC PROMPT'],
         'name' => 'Sample Candidate',
         'skills' => ['PHP'],
     ]);
@@ -73,9 +54,9 @@ it('composes agent instructions in static-prompt → profile → target order', 
         'criteria' => ['remote' => true],
     ]);
 
-    $instructions = $user->getAgentInstructions('scorer', $target);
+    $instructions = (string) (new JobScorerAgent($user, $target))->instructions();
 
-    expect($instructions)->toStartWith('STATIC PROMPT')
+    expect($instructions)->toStartWith('You are a job matching analyst.')
         ->and($instructions)->toContain('CANDIDATE PROFILE:')
         ->and($instructions)->toContain('"name": "Sample Candidate"')
         ->and($instructions)->toContain('TARGET:')
@@ -89,6 +70,8 @@ it('is byte-identical across repeat calls for the same user + target', function 
     $user = User::factory()->create();
     $target = targetFor($user);
 
-    expect($user->getAgentInstructions('resume', $target))
-        ->toBe($user->getAgentInstructions('resume', $target));
+    $agent = new ResumeTailorAgent($user, $target);
+
+    expect((string) $agent->instructions())
+        ->toBe((string) $agent->instructions());
 });

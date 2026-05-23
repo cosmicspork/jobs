@@ -125,7 +125,6 @@ class AdminUsers extends Page implements HasTable
                 'name' => $record->name,
                 'email' => $record->email,
                 'is_admin' => $record->is_admin,
-                'experience_years' => $record->experience_years,
                 'summary' => $record->summary,
                 'skills' => $record->skills ?? [],
                 'experience' => $record->experience ?? [],
@@ -149,11 +148,7 @@ class AdminUsers extends Page implements HasTable
                     ->description('Career identity. Keep direction-neutral — career aspirations belong in each target below.')
                     ->collapsible()
                     ->collapsed()
-                    ->columns(6)
                     ->schema([
-                        TextInput::make('experience_years')
-                            ->helperText('Surfaces in the resume header.')
-                            ->columnSpan(2),
                         Textarea::make('summary')
                             ->helperText('2-3 sentences on who they are. Avoid "seeking X" / aspiration language — that lives in each target\'s positioning.')
                             ->rows(3)
@@ -182,8 +177,18 @@ class AdminUsers extends Page implements HasTable
                             ])
                             ->collapsible()
                             ->itemLabel(fn (array $state): string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
-                        TagsInput::make('education')
-                            ->helperText('One entry per degree or certificate.'),
+                        Repeater::make('education')
+                            ->helperText('Highlights can include capstone projects, research, awards, or relevant coursework — the agent picks what fits per target.')
+                            ->schema([
+                                TextInput::make('qualification')->required(),
+                                TextInput::make('institution')->required(),
+                                TextInput::make('field_of_study'),
+                                TextInput::make('period')->required(),
+                                TagsInput::make('highlights')
+                                    ->helperText('Capstones, research, awards, relevant coursework.'),
+                            ])
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): string => trim(($state['qualification'] ?? '').' — '.($state['institution'] ?? ''))),
                     ]),
                 Section::make('Targets')
                     ->description('Career directions. Each target is scored and tailored independently — one per role type.')
@@ -280,7 +285,6 @@ class AdminUsers extends Page implements HasTable
                     'name' => $data['name'],
                     'email' => $data['email'],
                     'is_admin' => $data['is_admin'] ?? false,
-                    'experience_years' => $data['experience_years'] ?? null,
                     'summary' => $data['summary'] ?? null,
                     'skills' => $data['skills'] ?? [],
                     'experience' => $data['experience'] ?? [],

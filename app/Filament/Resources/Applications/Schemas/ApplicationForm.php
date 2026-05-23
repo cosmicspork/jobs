@@ -102,9 +102,23 @@ class ApplicationForm
             Section::make('Education')
                 ->schema([
                     Repeater::make('resume_content.education')
-                        ->label('Education entries')
-                        ->simple(TextInput::make('entry')->required())
-                        ->reorderable(),
+                        ->label('Entries')
+                        ->schema([
+                            TextInput::make('qualification')->required(),
+                            TextInput::make('institution')->required(),
+                            TextInput::make('field_of_study'),
+                            TextInput::make('period')->required()->placeholder('2014 - 2018'),
+                            Repeater::make('highlights')
+                                ->label('Bullets')
+                                ->simple(TextInput::make('highlight')->required())
+                                ->reorderable()
+                                ->collapsible()
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(4)
+                        ->collapsible()
+                        ->reorderable()
+                        ->itemLabel(fn (array $state): ?string => trim(($state['qualification'] ?? '').' — '.($state['institution'] ?? '')) ?: null),
                 ]),
         ];
     }

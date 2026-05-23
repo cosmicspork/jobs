@@ -29,10 +29,7 @@ it('exports a complete profile JSON shape', function () {
 });
 
 it('round-trips a profile from one user into a fresh user', function () {
-    $source = User::factory()->ic()->create([
-        'prompts' => ['scorer' => 'be terse'],
-        'preferences' => ['theme' => 'dark'],
-    ]);
+    $source = User::factory()->ic()->create();
     $payload = app(ProfileExporter::class)->export($source);
 
     $destination = User::factory()->create();
@@ -45,8 +42,6 @@ it('round-trips a profile from one user into a fresh user', function () {
         ->and($destination->skills)->toBe($source->skills)
         ->and($destination->experience)->toBe($source->experience)
         ->and($destination->education)->toBe($source->education)
-        ->and($destination->prompts)->toBe(['scorer' => 'be terse'])
-        ->and($destination->preferences)->toBe(['theme' => 'dark'])
         ->and($destination->targetProfiles()->count())->toBe($source->targetProfiles()->count());
 
     expect($destination->name)->not->toBe($source->name);

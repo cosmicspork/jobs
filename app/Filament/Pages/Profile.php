@@ -55,7 +55,6 @@ class Profile extends Page
         $this->form->fill([
             'name' => $user->name,
             'email' => $user->email,
-            'experience_years' => $user->experience_years,
             'summary' => $user->summary,
             'skills' => $user->skills ?? [],
             'experience' => $user->experience ?? [],
@@ -79,16 +78,11 @@ class Profile extends Page
                         ->schema([
                             TextInput::make('name')
                                 ->required()
-                                ->columnSpan(2),
+                                ->columnSpan(3),
                             TextInput::make('email')
                                 ->email()
                                 ->required()
-                                ->columnSpan(2),
-                            TextInput::make('experience_years')
-                                ->label('Years of experience')
-                                ->placeholder('e.g. 9+')
-                                ->helperText('Surfaces in the resume header.')
-                                ->columnSpan(2),
+                                ->columnSpan(3),
                             Textarea::make('summary')
                                 ->label('Career summary')
                                 ->helperText('2-3 sentences on who you are: technical depth, scope of work, current context. Avoid "seeking X" / aspiration language — that lives in each target\'s positioning.')
@@ -125,9 +119,21 @@ class Profile extends Page
                                 ->addActionLabel('Add role')
                                 ->collapsible()
                                 ->itemLabel(fn (array $state): string => ($state['role'] ?? '').' — '.($state['company'] ?? '')),
-                            TagsInput::make('education')
-                                ->placeholder('e.g. B.S. Computer Science, University X')
-                                ->helperText('One entry per degree or certificate. Surfaces in the resume\'s Education section.'),
+                            Repeater::make('education')
+                                ->label('Education')
+                                ->helperText('Add degrees, certificates, or relevant training. Highlights can include capstone projects, research, awards, or coursework — the agent picks what\'s relevant per target.')
+                                ->schema([
+                                    TextInput::make('qualification')->required()->placeholder('e.g. B.S.'),
+                                    TextInput::make('institution')->required()->placeholder('e.g. State University'),
+                                    TextInput::make('field_of_study')->placeholder('e.g. Computer Science'),
+                                    TextInput::make('period')->required()->placeholder('2014 - 2018'),
+                                    TagsInput::make('highlights')
+                                        ->placeholder('Add a highlight')
+                                        ->helperText('Capstones, research, awards, relevant coursework — anything the agent can pull from when this entry is worth surfacing.'),
+                                ])
+                                ->addActionLabel('Add education entry')
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): string => trim(($state['qualification'] ?? '').' — '.($state['institution'] ?? ''))),
                         ]),
                     Section::make('Targets')
                         ->description('What roles you\'re hunting for. Each target is scored and tailored independently — add one per career direction you\'re open to (e.g. one for management, one for senior IC).')
@@ -248,7 +254,6 @@ class Profile extends Page
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
-            'experience_years' => $data['experience_years'],
             'summary' => $data['summary'] ?? null,
             'skills' => $data['skills'] ?? [],
             'experience' => $data['experience'] ?? [],
@@ -315,7 +320,7 @@ class Profile extends Page
                 ->icon(Heroicon::OutlinedArrowUpTray)
                 ->color('gray')
                 ->modalHeading('Import profile from a backup')
-                ->modalDescription('Replaces your profile fields (summary, skills, experience, education, prompts, preferences, notification settings). Target profiles are matched by name — existing ones are updated in place, new ones are added, and any not in the file are deactivated (not deleted) so your application history stays intact.')
+                ->modalDescription('Replaces your profile fields (summary, skills, experience, education, notification settings). Target profiles are matched by name — existing ones are updated in place, new ones are added, and any not in the file are deactivated (not deleted) so your application history stays intact.')
                 ->modalSubmitActionLabel('Import')
                 ->schema([
                     FileUpload::make('file')
