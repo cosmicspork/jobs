@@ -29,12 +29,9 @@ class ApplicationsTable
                 TextColumn::make('status')
                     ->badge(),
                 TextColumn::make('updated_at')
-                    ->label('Last touched')
+                    ->label('Last modified')
                     ->since()
                     ->sortable(),
-                TextColumn::make('applied_at')
-                    ->since()
-                    ->placeholder('Not applied'),
             ])
             ->defaultSort('updated_at', 'desc')
             ->filters([
