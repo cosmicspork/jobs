@@ -116,11 +116,13 @@ class Application extends Model
         // The extra-instructions field is non-destructive: caller passed
         // null → keep whatever was there. Caller passed a string → overwrite.
         // Empty string from a UI textarea is treated as "clear".
+        $updates = ['status' => ApplicationStatus::Generating];
+
         if ($extraInstructions !== null) {
-            $application->update(['extra_instructions' => $extraInstructions !== '' ? $extraInstructions : null]);
+            $updates['extra_instructions'] = $extraInstructions !== '' ? $extraInstructions : null;
         }
 
-        $application->update(['status' => ApplicationStatus::Generating]);
+        $application->update($updates);
 
         Bus::batch($jobs($application))
             ->then(new MarkApplicationReady($application))

@@ -66,9 +66,8 @@ class EditApplication extends EditRecord
                 /** @var Application $record */
                 $record = $this->record;
 
-                $extra = $data['extra_instructions'] ?? null;
                 $record->update([
-                    'extra_instructions' => $extra !== null && $extra !== '' ? $extra : null,
+                    'extra_instructions' => filled($data['extra_instructions'] ?? null) ? $data['extra_instructions'] : null,
                     'status' => ApplicationStatus::Generating,
                 ]);
 

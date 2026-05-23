@@ -51,15 +51,11 @@ trait HasListingActions
                             ->label('Anything else the AI should know?')
                             ->placeholder('Optional. e.g. "emphasize the queue-layer work" or "tone less formal"')
                             ->rows(3)
-                            ->default(function () use ($listing): ?string {
-                                $existing = Application::query()
-                                    ->where('user_id', auth()->id())
-                                    ->where('listing_id', $listing->id)
-                                    ->latest()
-                                    ->value('extra_instructions');
-
-                                return $existing;
-                            }),
+                            ->default(fn (): ?string => Application::query()
+                                ->where('user_id', auth()->id())
+                                ->where('listing_id', $listing->id)
+                                ->latest()
+                                ->value('extra_instructions')),
                     ]
                 );
             })
@@ -79,12 +75,14 @@ trait HasListingActions
                 }
 
                 $artifacts = $data['artifacts'] ?? [];
+                $wantsResume = in_array('resume', $artifacts, true);
+                $wantsCoverLetter = in_array('cover_letter', $artifacts, true);
                 $extra = trim((string) ($data['extra_instructions'] ?? '')) ?: null;
 
                 $application = match (true) {
-                    in_array('resume', $artifacts, true) && in_array('cover_letter', $artifacts, true) => Application::generateBoth($listing, auth()->user(), $target, $extra),
-                    in_array('resume', $artifacts, true) => Application::generateResume($listing, auth()->user(), $target, $extra),
-                    in_array('cover_letter', $artifacts, true) => Application::generateCoverLetter($listing, auth()->user(), $target, $extra),
+                    $wantsResume && $wantsCoverLetter => Application::generateBoth($listing, auth()->user(), $target, $extra),
+                    $wantsResume => Application::generateResume($listing, auth()->user(), $target, $extra),
+                    $wantsCoverLetter => Application::generateCoverLetter($listing, auth()->user(), $target, $extra),
                     default => Application::firstOrCreate(
                         [
                             'listing_id' => $listing->id,
