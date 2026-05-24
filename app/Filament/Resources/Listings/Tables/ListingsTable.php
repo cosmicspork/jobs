@@ -13,6 +13,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -24,7 +25,7 @@ class ListingsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function ($query) {
+            ->modifyQueryUsing(function ($query, HasTable $livewire) {
                 $userId = auth()->id();
 
                 $bestPivotId = DB::table('listing_user as inner_lu')
@@ -35,7 +36,7 @@ class ListingsTable
                     ->orderByDesc('inner_lu.scored_at')
                     ->limit(1);
 
-                return $query
+                $query
                     ->join('listing_user', function ($join) use ($userId, $bestPivotId) {
                         $join->on('listings.id', '=', 'listing_user.listing_id')
                             ->where('listing_user.user_id', $userId)
@@ -56,6 +57,14 @@ class ListingsTable
                         'listing_user.target_profile_id',
                         'target_profiles.name as target_name',
                     ]);
+
+                // Hide dismissed listings by default. The Dismissed filter overrides
+                // this once engaged, so it lives here rather than as a counted filter default.
+                if (($livewire->getTableFilterState('dismissed')['value'] ?? null) === null) {
+                    $query->whereNull('listing_user.dismissed_at');
+                }
+
+                return $query;
             })
             ->columns([
                 IconColumn::make('starred_at')
@@ -147,14 +156,16 @@ class ListingsTable
                     ),
                 TernaryFilter::make('dismissed')
                     ->label('Dismissed')
-                    ->default(false)
+                    ->placeholder('Hidden')
+                    ->trueLabel('Only dismissed')
+                    ->falseLabel('Include dismissed')
                     ->queries(
                         true: fn ($query) => $query->whereNotNull('listing_user.dismissed_at'),
-                        false: fn ($query) => $query->whereNull('listing_user.dismissed_at'),
+                        false: fn ($query) => $query,
                     )
                     ->indicateUsing(fn (array $data): ?string => match ($data['value'] ?? null) {
-                        true => 'Dismissed only',
-                        null => 'Including dismissed',
+                        true => 'Only dismissed',
+                        false => 'Including dismissed',
                         default => null,
                     }),
                 SelectFilter::make('board')

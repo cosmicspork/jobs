@@ -55,6 +55,31 @@ it('surfaces dismissed listings when the dismissed filter is enabled', function 
         ->assertCanNotSeeTableRecords([$live]);
 });
 
+it('shows both live and dismissed listings when the dismissed filter includes them', function () {
+    $live = Listing::factory()->create();
+    makePivot($live->id, $this->user->id, $this->target->id);
+
+    $dismissed = Listing::factory()->create();
+    makePivot($dismissed->id, $this->user->id, $this->target->id, [
+        'dismissed_at' => now(),
+    ]);
+
+    Livewire::test(ListListings::class, ['activeTab' => 'all'])
+        ->filterTable('dismissed', false)
+        ->assertCanSeeTableRecords([$live, $dismissed]);
+});
+
+it('reports no active filters on a fresh listings table', function () {
+    $listing = Listing::factory()->create();
+    makePivot($listing->id, $this->user->id, $this->target->id);
+
+    $table = Livewire::test(ListListings::class, ['activeTab' => 'all'])
+        ->instance()
+        ->getTable();
+
+    expect($table->getActiveFiltersCount())->toBe(0);
+});
+
 it('toggles dismissed via the ViewListing page action', function () {
     $listing = Listing::factory()->create();
     $pivot = makePivot($listing->id, $this->user->id, $this->target->id);
