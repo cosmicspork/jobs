@@ -13,6 +13,8 @@ use App\Models\User;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -20,6 +22,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +30,7 @@ use Laravel\Ai\Exceptions\AiException;
 
 /**
  * @property-read Schema $form
+ * @property-read Schema $reviewForm
  */
 class ApplicationQuestions extends Page
 {
@@ -54,8 +58,8 @@ class ApplicationQuestions extends Page
 
     public bool $showResults = false;
 
-    /** @var array<int, array<string, mixed>> */
-    public array $results = [];
+    /** @var array{results?: array<int, array<string, mixed>>}|null */
+    public ?array $reviewData = [];
 
     public function mount(): void
     {
@@ -142,6 +146,49 @@ class ApplicationQuestions extends Page
                 ]),
             ])
             ->statePath('data');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function getForms(): array
+    {
+        return ['form', 'reviewForm'];
+    }
+
+    public function reviewForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Repeater::make('results')
+                    ->hiddenLabel()
+                    ->addable(false)
+                    ->deletable(false)
+                    ->reorderable(false)
+                    ->itemLabel(fn (array $state): ?string => $state['question'] ?? null)
+                    ->schema([
+                        Hidden::make('id'),
+                        Hidden::make('question'),
+                        Hidden::make('answer'),
+                        Hidden::make('feedback'),
+                        Hidden::make('grammar_corrections'),
+                        Placeholder::make('original_answer')
+                            ->label('Your original answer')
+                            ->content(fn (Get $get): string => (string) $get('answer')),
+                        Placeholder::make('feedback_display')
+                            ->label('Feedback')
+                            ->content(fn (Get $get): string => (string) $get('feedback')),
+                        Placeholder::make('grammar_display')
+                            ->label('Grammar & style notes')
+                            ->content(fn (Get $get): string => (string) $get('grammar_corrections'))
+                            ->visible(fn (Get $get): bool => filled($get('grammar_corrections'))
+                                && $get('grammar_corrections') !== 'No issues found.'),
+                        Textarea::make('suggested_answer')
+                            ->label('Suggested response')
+                            ->rows(5),
+                    ]),
+            ])
+            ->statePath('reviewData');
     }
 
     public function submitForReview(): void
@@ -267,7 +314,9 @@ class ApplicationQuestions extends Page
     {
         $questionSet = ApplicationQuestionSet::findOrFail($this->questionSetId);
 
-        foreach ($this->results as $result) {
+        $results = $this->reviewForm->getState()['results'] ?? [];
+
+        foreach ($results as $result) {
             ApplicationQuestion::where('id', $result['id'])
                 ->update(['final_answer' => $result['suggested_answer']]);
         }
@@ -285,7 +334,7 @@ class ApplicationQuestions extends Page
         $questionSet = ApplicationQuestionSet::findOrFail($this->questionSetId);
 
         $questions = [];
-        foreach ($this->results as $result) {
+        foreach ($this->reviewForm->getState()['results'] ?? [] as $result) {
             $questions[] = [
                 'question' => $result['question'],
                 'answer' => $result['suggested_answer'],
@@ -293,7 +342,7 @@ class ApplicationQuestions extends Page
         }
 
         $this->showResults = false;
-        $this->results = [];
+        $this->reviewData = [];
 
         $this->form->fill([
             'listing_id' => $questionSet->listing_id,
@@ -308,7 +357,7 @@ class ApplicationQuestions extends Page
     {
         $this->questionSetId = null;
         $this->showResults = false;
-        $this->results = [];
+        $this->reviewData = [];
 
         /** @var User $user */
         $user = auth()->user();
@@ -337,14 +386,16 @@ class ApplicationQuestions extends Page
 
         if ($hasReviews) {
             $this->showResults = true;
-            $this->results = $questionSet->questions->map(fn (ApplicationQuestion $q) => [
-                'id' => $q->id,
-                'question' => $q->question,
-                'answer' => $q->answer,
-                'feedback' => $q->feedback,
-                'grammar_corrections' => $q->grammar_corrections,
-                'suggested_answer' => $q->final_answer ?? $q->suggested_answer,
-            ])->all();
+            $this->reviewForm->fill([
+                'results' => $questionSet->questions->map(fn (ApplicationQuestion $q) => [
+                    'id' => $q->id,
+                    'question' => $q->question,
+                    'answer' => $q->answer,
+                    'feedback' => $q->feedback,
+                    'grammar_corrections' => $q->grammar_corrections,
+                    'suggested_answer' => $q->final_answer ?? $q->suggested_answer,
+                ])->all(),
+            ]);
 
             $this->form->fill([
                 'listing_id' => $questionSet->listing_id,

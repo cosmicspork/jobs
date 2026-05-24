@@ -81,7 +81,10 @@ it('can save final answers', function () {
     $component = Livewire::withQueryParams(['listing' => $set->listing_id])
         ->test(ApplicationQuestions::class);
 
-    $component->set('results.0.suggested_answer', 'My edited final answer')
+    // Filament repeaters key items by a generated UUID, so target the real item.
+    $itemKey = array_key_first($component->get('reviewData.results'));
+
+    $component->set("reviewData.results.{$itemKey}.suggested_answer", 'My edited final answer')
         ->call('saveFinalAnswers')
         ->assertNotified();
 

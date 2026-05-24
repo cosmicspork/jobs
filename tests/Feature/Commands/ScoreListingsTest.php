@@ -70,7 +70,8 @@ it('skips listings awaiting enrichment so the scorer never sees a stub descripti
     Queue::fake();
 
     $pending = Listing::factory()->awaitingEnrichment()->create();
-    $ready = Listing::factory()->create(['remote' => true]);
+    // salary_max => null so the random factory salary never trips the salary filter.
+    $ready = Listing::factory()->create(['remote' => true, 'salary_max' => null]);
 
     foreach ([$pending, $ready] as $listing) {
         ListingUser::create([

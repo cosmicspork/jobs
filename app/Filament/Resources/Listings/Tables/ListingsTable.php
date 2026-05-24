@@ -77,7 +77,7 @@ class ListingsTable
                     ->action(function (Listing $record): void {
                         ListingUser::forUserListing(auth()->id(), $record->id)?->toggleShortlisted();
                     })
-                    ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['all'])),
+                    ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['all', 'starred'])),
                 IconColumn::make('applications_count')
                     ->label('Applied')
                     ->icon(fn (Listing $record): ?string => $record->applications_count > 0 ? 'heroicon-s-check-circle' : null)
@@ -89,8 +89,7 @@ class ListingsTable
                         ? $record->target_name.' · '.($record->relevance?->getLabel() ?? 'Unscored')
                         : ($record->relevance?->getLabel() ?? 'Unscored'))
                     ->badge()
-                    ->color(fn (Listing $record) => $record->relevance?->getColor() ?? 'gray')
-                    ->visible(fn (ListListings $livewire): bool => $livewire->activeTab === 'all'),
+                    ->color(fn (Listing $record) => $record->relevance?->getColor() ?? 'gray'),
                 TextColumn::make('title')
                     ->searchable()
                     ->sortable()
@@ -104,6 +103,27 @@ class ListingsTable
                     ->sortable(),
             ])
             ->defaultSort('scored_at', 'desc')
+            ->emptyStateIcon(fn (ListListings $livewire): string => match ($livewire->activeTab) {
+                'inbox' => 'heroicon-o-inbox',
+                'starred' => 'heroicon-o-star',
+                'shortlisted' => 'heroicon-o-clipboard-document-check',
+                'applied' => 'heroicon-o-check-circle',
+                default => 'heroicon-o-rectangle-stack',
+            })
+            ->emptyStateHeading(fn (ListListings $livewire): string => match ($livewire->activeTab) {
+                'inbox' => "You're all caught up",
+                'starred' => 'Nothing starred yet',
+                'shortlisted' => 'Nothing shortlisted yet',
+                'applied' => 'No applications yet',
+                default => 'No listings yet',
+            })
+            ->emptyStateDescription(fn (ListListings $livewire): string => match ($livewire->activeTab) {
+                'inbox' => 'New relevant and maybe matches will land here as they are scored.',
+                'starred' => 'Star a listing to keep it handy.',
+                'shortlisted' => 'Shortlist a listing to queue it for an application.',
+                'applied' => 'Listings you generate an application for will appear here.',
+                default => 'Listings will appear here once boards are scraped and scored.',
+            })
             ->filters([
                 TernaryFilter::make('remote')
                     ->label('Remote'),

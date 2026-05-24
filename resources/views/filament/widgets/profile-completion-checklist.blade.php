@@ -18,7 +18,7 @@
             />
         </x-slot>
 
-        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.625rem;">
+        <div class="grid grid-cols-2 gap-2.5">
             @foreach ($this->getItems() as $item)
                 <x-filament::badge
                     :color="$item['done'] ? 'success' : 'danger'"
@@ -30,7 +30,7 @@
             @endforeach
         </div>
 
-        <div style="margin-top: 1rem;">
+        <div class="mt-4">
             <x-filament::button :href="$this->getProfileUrl()" tag="a" size="sm">
                 Open Profile
             </x-filament::button>
