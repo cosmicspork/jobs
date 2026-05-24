@@ -54,21 +54,24 @@ it('displays listing stats', function () {
     ]));
 
     Livewire::test(ListingStats::class)
-        ->assertSee('Total Listings')
-        ->assertSee('5')
-        ->assertSee('Relevant')
-        ->assertSee('Unscored');
+        ->assertSee('Inbox')
+        ->assertSee('Awaiting application')
+        ->assertSee('Applications')
+        ->assertSee('New this week')
+        ->assertSee('3')
+        ->assertSee('5');
 });
 
-it('sends the board request email and clears the form', function () {
+it('sends the board request email via the header action', function () {
     Mail::fake();
     login(User::factory()->ic()->create());
 
     Livewire::test(Home::class)
-        ->set('data.name', 'Indeed')
-        ->set('data.url', 'https://indeed.com')
-        ->set('data.notes', 'IT helpdesk roles, remote')
-        ->call('submit')
+        ->callAction('requestBoard', [
+            'name' => 'Indeed',
+            'url' => 'https://indeed.com',
+            'notes' => 'IT helpdesk roles, remote',
+        ])
         ->assertNotified();
 
     Mail::assertSent(BoardRequested::class, function ($mail) {
@@ -84,9 +87,10 @@ it('warns when admin email is not configured', function () {
     login(User::factory()->ic()->create());
 
     Livewire::test(Home::class)
-        ->set('data.name', 'Indeed')
-        ->set('data.url', 'https://indeed.com')
-        ->call('submit');
+        ->callAction('requestBoard', [
+            'name' => 'Indeed',
+            'url' => 'https://indeed.com',
+        ]);
 
     Mail::assertNothingSent();
 });
