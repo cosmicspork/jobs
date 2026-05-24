@@ -8,6 +8,7 @@ use App\Jobs\GenerateCoverLetter;
 use App\Jobs\GenerateResume;
 use App\Models\Application;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -42,22 +43,14 @@ class EditApplication extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            $this->regenerateAction('regenerateResume', 'Regenerate resume', GenerateResume::class, 'resume'),
-            $this->regenerateAction('regenerateCoverLetter', 'Regenerate cover letter', GenerateCoverLetter::class, 'cover letter'),
-            Action::make('printResume')
-                ->label('Print resume')
-                ->icon(Heroicon::OutlinedPrinter)
-                ->color('gray')
-                ->url(fn (Application $record): string => route('applications.print.resume', $record))
-                ->openUrlInNewTab()
-                ->visible(fn (Application $record): bool => filled($record->resume_content)),
-            Action::make('printCoverLetter')
-                ->label('Print cover letter')
-                ->icon(Heroicon::OutlinedPrinter)
-                ->color('gray')
-                ->url(fn (Application $record): string => route('applications.print.cover-letter', $record))
-                ->openUrlInNewTab()
-                ->visible(fn (Application $record): bool => filled($record->cover_letter_content)),
+            ActionGroup::make([
+                $this->regenerateAction('regenerateResume', 'Regenerate resume', GenerateResume::class, 'resume'),
+                $this->regenerateAction('regenerateCoverLetter', 'Regenerate cover letter', GenerateCoverLetter::class, 'cover letter'),
+            ])
+                ->label('Regenerate')
+                ->icon(Heroicon::OutlinedArrowPath)
+                ->button()
+                ->color('primary'),
             DeleteAction::make(),
         ];
     }

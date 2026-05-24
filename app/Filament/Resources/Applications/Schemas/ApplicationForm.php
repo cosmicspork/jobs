@@ -90,11 +90,13 @@ class ApplicationForm
                             Repeater::make('highlights')
                                 ->label('Bullets')
                                 ->simple(TextInput::make('highlight')->required())
+                                ->addActionLabel('Add bullet')
                                 ->reorderable()
                                 ->collapsible()
                                 ->columnSpanFull(),
                         ])
                         ->columns(3)
+                        ->addActionLabel('Add role')
                         ->collapsible()
                         ->reorderable()
                         ->itemLabel(fn (array $state): ?string => trim(($state['role'] ?? '').' — '.($state['company'] ?? '')) ?: null),
@@ -111,11 +113,13 @@ class ApplicationForm
                             Repeater::make('highlights')
                                 ->label('Bullets')
                                 ->simple(TextInput::make('highlight')->required())
+                                ->addActionLabel('Add bullet')
                                 ->reorderable()
                                 ->collapsible()
                                 ->columnSpanFull(),
                         ])
                         ->columns(4)
+                        ->addActionLabel('Add education entry')
                         ->collapsible()
                         ->reorderable()
                         ->itemLabel(fn (array $state): ?string => trim(($state['qualification'] ?? '').' — '.($state['institution'] ?? '')) ?: null),
@@ -169,7 +173,7 @@ class ApplicationForm
                 ->schema([
                     TextEntry::make('latestQuestionSetStatus')
                         ->label('Latest status')
-                        ->state(fn (Application $record) => self::latestQuestionSet($record)?->status?->value ?? 'No questions yet')
+                        ->state(fn (Application $record) => self::latestQuestionSet($record)?->status->value ?? 'No questions yet')
                         ->badge(),
                 ]),
         ];
