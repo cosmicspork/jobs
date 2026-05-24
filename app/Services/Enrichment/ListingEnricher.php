@@ -74,7 +74,7 @@ class ListingEnricher
             $history = array_map('trim', explode(',', $redirected));
             $last = end($history);
 
-            if ($last !== false && $last !== '') {
+            if ($last !== '') {
                 return $last;
             }
         }
