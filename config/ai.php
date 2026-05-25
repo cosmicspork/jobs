@@ -39,9 +39,8 @@ return [
                 // Ordered map of provider => model. Empty disables failover.
                 // Only FailoverableException (rate-limit / overload) triggers
                 // failover — not provider-cap or spending-limit errors.
-                // Example to enable:
-                //   'anthropic' => 'claude-haiku-4-5-20251001',
-                //   'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+                'anthropic' => 'claude-haiku-4-5-20251001',
+                'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
             ],
         ],
         'resume_tailor' => [

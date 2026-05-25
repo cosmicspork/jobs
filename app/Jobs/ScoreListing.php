@@ -18,14 +18,23 @@ class ScoreListing implements ShouldQueue
 {
     use FreezesAiProvider, Queueable;
 
-    public int $tries = 3;
-
-    public int $backoff = 30;
+    public int $tries = 5;
 
     public function __construct(
         public Listing $listing,
         public TargetProfile $target,
     ) {}
+
+    /**
+     * Stepped backoff (seconds) so retries span a wide window rather than
+     * hammering a briefly-overloaded provider within ~60s.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [30, 60, 120, 300];
+    }
 
     public function handle(): void
     {

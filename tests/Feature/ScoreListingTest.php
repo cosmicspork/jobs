@@ -8,10 +8,12 @@ use App\Models\AiUsage;
 use App\Models\Listing;
 use App\Models\ListingUser;
 use App\Models\User;
+use App\Relevance;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Event;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\AiException;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 beforeEach(function () {
     $this->user = User::factory()->ic()->create();
@@ -168,4 +170,37 @@ it('rethrows non-usage-limit AiExceptions so existing retry handling fires', fun
 
     expect(fn () => $job->handle())->toThrow(AiException::class);
     expect(ProviderFreeze::providerFrozenUntil(config('ai.agents.scorer.provider')))->toBeNull();
+});
+
+it('fails over to the next provider when the primary is overloaded', function () {
+    config(['ai.agents.scorer.failover' => [
+        'anthropic' => 'claude-haiku-4-5-20251001',
+        'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+    ]]);
+
+    JobScorerAgent::fake(function ($prompt, $attachments, $provider) {
+        if ($provider->name() === 'anthropic') {
+            throw new ProviderOverloadedException('AI provider [anthropic] is overloaded.');
+        }
+
+        return [
+            'relevance' => 'relevant',
+            'matched_skills' => [],
+            'gaps' => [],
+            'reasoning' => 'ok',
+        ];
+    });
+
+    (new ScoreListing($this->listing, $this->target))->handle();
+
+    expect($this->pivot->fresh())
+        ->relevance->toBe(Relevance::Relevant)
+        ->scored_at->not->toBeNull();
+});
+
+it('uses a stepped backoff over a wide window with five tries', function () {
+    $job = new ScoreListing($this->listing, $this->target);
+
+    expect($job->tries)->toBe(5)
+        ->and($job->backoff())->toBe([30, 60, 120, 300]);
 });
