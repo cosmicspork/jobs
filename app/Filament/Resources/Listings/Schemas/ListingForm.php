@@ -32,13 +32,6 @@ class ListingForm
                             ->required()
                             ->maxLength(2048)
                             ->columnSpanFull(),
-                        TextInput::make('source_url')
-                            ->label('Source URL')
-                            ->url()
-                            ->maxLength(2048)
-                            ->unique(ignoreRecord: true)
-                            ->helperText('Where the listing was found. Leave blank to use the Job URL.')
-                            ->columnSpanFull(),
                         TextInput::make('salary_min')
                             ->label('Salary Min')
                             ->numeric()

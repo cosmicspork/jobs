@@ -43,6 +43,10 @@ class EnrichListing implements ShouldQueue
             $updates['description'] = $result['markdown'];
         }
 
+        if ($result['final_url'] !== $this->listing->url) {
+            $updates['url'] = $result['final_url'];
+        }
+
         $this->listing->update($updates);
 
         Log::info("Enriched listing {$this->listing->id} via {$result['source']} (".strlen((string) $result['markdown']).' chars)');

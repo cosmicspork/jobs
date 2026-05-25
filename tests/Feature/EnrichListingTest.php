@@ -107,3 +107,49 @@ it('is idempotent — does nothing if the listing is already enriched', function
     Http::assertNothingSent();
     Bus::assertNotDispatched(ScoreListing::class);
 });
+it('writes the resolved final_url back to listings.url when enrichment follows a redirect', function () {
+    Bus::fake([ScoreListing::class]);
+
+    $listing = Listing::factory()->awaitingEnrichment()->create([
+        'url' => 'https://larajobs.com/job/456',
+    ]);
+
+    Http::fake([
+        // HEAD request: simulate Guzzle redirect tracking via the header it injects.
+        'larajobs.com/job/456' => Http::response('', 200, [
+            'X-Guzzle-Redirect-History' => 'https://greenhouse.io/jobs/dev-456',
+        ]),
+        'greenhouse.io/jobs/dev-456' => Http::response(
+            '<html><main><h1>Dev Role</h1><p>Full description here.</p></main></html>',
+            200
+        ),
+    ]);
+
+    (new EnrichListing($listing))->handle(app(ListingEnricher::class));
+
+    $listing->refresh();
+
+    expect($listing->url)->toBe('https://greenhouse.io/jobs/dev-456')
+        ->and($listing->enriched_at)->not->toBeNull();
+});
+
+it('leaves listings.url unchanged when no redirect occurs during enrichment', function () {
+    Bus::fake([ScoreListing::class]);
+
+    $listing = Listing::factory()->awaitingEnrichment()->create([
+        'url' => 'https://apply.workable.com/acme/j/XYZ',
+    ]);
+
+    Http::fake([
+        'apply.workable.com/acme/j/XYZ' => Http::sequence()
+            ->push('', 200)
+            ->push('<link rel="alternate" type="text/markdown" href="https://apply.workable.com/acme/jobs/view/XYZ.md"/>', 200),
+        'apply.workable.com/acme/jobs/view/XYZ.md' => Http::response("# Role\n\nFull description.", 200),
+    ]);
+
+    (new EnrichListing($listing))->handle(app(ListingEnricher::class));
+
+    $listing->refresh();
+
+    expect($listing->url)->toBe('https://apply.workable.com/acme/j/XYZ');
+});

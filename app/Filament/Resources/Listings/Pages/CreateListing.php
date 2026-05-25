@@ -37,6 +37,7 @@ class CreateListing extends CreateRecord
         $data['scraped_at'] ??= now();
         $data['created_by_user_id'] = auth()->id();
         $data['source_url'] ??= $data['url'];
+        $data['manually_edited_at'] = now();
 
         return $data;
     }

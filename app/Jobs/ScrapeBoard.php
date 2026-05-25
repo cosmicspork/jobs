@@ -36,26 +36,27 @@ class ScrapeBoard implements ShouldQueue
         }
 
         $now = now();
-        $existingSourceUrls = array_flip(
-            Listing::query()
-                ->whereIn('source_url', array_column($rows, 'source_url'))
-                ->pluck('source_url')
-                ->all()
-        );
+        $existingListings = Listing::query()
+            ->whereIn('source_url', array_column($rows, 'source_url'))
+            ->get(['id', 'source_url', 'manually_edited_at'])
+            ->keyBy('source_url');
 
-        /** @var array<int, array<string, mixed>> $payload */
-        $payload = [];
+        /** @var array<int, array<string, mixed>> $fullPayload */
+        $fullPayload = [];
+        /** @var array<int, array<string, mixed>> $metadataPayload */
+        $metadataPayload = [];
         /** @var array<int, string> $newListingIds */
         $newListingIds = [];
 
         foreach ($rows as $data) {
             $id = (string) Str::ulid();
+            $existing = $existingListings->get($data['source_url']);
 
-            if (! isset($existingSourceUrls[$data['source_url']])) {
+            if ($existing === null) {
                 $newListingIds[] = $id;
             }
 
-            $payload[] = [
+            $row = [
                 'id' => $id,
                 'title' => $data['title'],
                 'company' => $data['company'],
@@ -71,6 +72,12 @@ class ScrapeBoard implements ShouldQueue
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
+
+            if ($existing?->manually_edited_at !== null) {
+                $metadataPayload[] = $row;
+            } else {
+                $fullPayload[] = $row;
+            }
         }
 
         $requiresEnrichment = (bool) config("boards.{$this->boardKey}.requires_enrichment", false);
@@ -80,13 +87,19 @@ class ScrapeBoard implements ShouldQueue
         // through immediately. Enrichment-required boards stay null until
         // EnrichListing rewrites the description.
         if (! $requiresEnrichment) {
-            foreach ($payload as &$row) {
+            foreach ($fullPayload as &$row) {
                 $row['enriched_at'] = $now;
                 $row['enrichment_source'] = 'inline';
             }
             unset($row);
         }
 
+        // Columns always refreshed by the scraper, even for user-edited rows.
+        $metadataColumns = ['board', 'raw_data', 'scraped_at', 'updated_at'];
+
+        // Full column set applied to new listings and those the user has not
+        // manually edited. User-edited rows only receive $metadataColumns so
+        // their corrections survive re-scrapes.
         $columnsToUpdate = ['title', 'company', 'url', 'salary_min', 'salary_max',
             'remote', 'board', 'raw_data', 'scraped_at', 'updated_at'];
 
@@ -100,7 +113,13 @@ class ScrapeBoard implements ShouldQueue
             $columnsToUpdate[] = 'enrichment_source';
         }
 
-        Listing::query()->upsert($payload, ['source_url'], $columnsToUpdate);
+        if ($fullPayload !== []) {
+            Listing::query()->upsert($fullPayload, ['source_url'], $columnsToUpdate);
+        }
+
+        if ($metadataPayload !== []) {
+            Listing::query()->upsert($metadataPayload, ['source_url'], $metadataColumns);
+        }
 
         if ($requiresEnrichment) {
             // Newly-created rows from this board need their description

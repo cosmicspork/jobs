@@ -248,3 +248,66 @@ it('dedups by source_url even when apply url changes between scrapes', function 
         ->and($listing->url)->toBe('https://acme.com/apply')
         ->and($listing->source_url)->toBe('https://news.ycombinator.com/item?id=99');
 });
+it('does not overwrite user-editable fields when a listing has been manually edited', function () {
+    $listing = Listing::factory()->create([
+        'url' => 'https://example.com/edited-job',
+        'source_url' => 'https://example.com/edited-job',
+        'title' => 'My Corrected Title',
+        'company' => 'Corrected Co',
+        'description' => 'Full description pasted by user.',
+        'salary_min' => 180000,
+        'salary_max' => 220000,
+        'remote' => true,
+        'manually_edited_at' => now(),
+        'scraped_at' => now()->subDay(),
+        'raw_data' => ['original' => true],
+    ]);
+
+    $originalScrapedAt = $listing->scraped_at;
+
+    StubScraper::$rows = [
+        stubRow([
+            'url' => 'https://example.com/edited-job',
+            'title' => 'Scraper Title',
+            'company' => 'Scraper Co',
+            'description' => 'Stub description from scraper.',
+            'salary_min' => 100000,
+            'salary_max' => 130000,
+            'remote' => false,
+            'raw_data' => ['updated' => true],
+        ]),
+    ];
+
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+
+    $listing->refresh();
+
+    // User-editable fields must survive the re-scrape.
+    expect($listing->title)->toBe('My Corrected Title')
+        ->and($listing->company)->toBe('Corrected Co')
+        ->and($listing->description)->toBe('Full description pasted by user.')
+        ->and($listing->salary_min)->toBe(180000)
+        ->and($listing->salary_max)->toBe(220000)
+        ->and($listing->remote)->toBeTrue();
+
+    // Scraper metadata must still flow through.
+    expect($listing->raw_data)->toBe(['updated' => true])
+        ->and($listing->scraped_at)->not->toEqual($originalScrapedAt);
+});
+
+it('does not inflate query count when all listings are unedited', function () {
+    StubScraper::$rows = collect(range(1, 20))
+        ->map(fn (int $i) => stubRow(['url' => "https://example.com/job/{$i}"]))
+        ->all();
+
+    // Seed a batch of existing unedited rows.
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+
+    DB::enableQueryLog();
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+    $queries = DB::getQueryLog();
+
+    // 1: pre-fetch existing listings, 2: full upsert (no edited rows → metadata upsert
+    // skipped). board_user lookup is omitted because $created = 0. Constant — not O(rows).
+    expect(count($queries))->toBe(2);
+});

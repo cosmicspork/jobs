@@ -47,7 +47,8 @@ it('creates a listing with sane defaults and a pivot for each active target', fu
 
     $listing = Listing::where('title', 'Senior Engineer')->firstOrFail();
 
-    expect($listing->scraped_at)->not->toBeNull();
+    expect($listing->scraped_at)->not->toBeNull()
+        ->and($listing->manually_edited_at)->not->toBeNull();
 
     $pivots = ListingUser::where('listing_id', $listing->id)
         ->where('user_id', $this->user->id)

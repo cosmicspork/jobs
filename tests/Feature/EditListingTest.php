@@ -6,8 +6,6 @@ use App\Models\ListingUser;
 use App\Relevance;
 use Livewire\Livewire;
 
-use function Pest\Laravel\assertDatabaseHas;
-
 beforeEach(function () {
     $this->user = login();
 });
@@ -34,13 +32,12 @@ it('can update listing fields', function () {
         ->call('save')
         ->assertNotified();
 
-    assertDatabaseHas(Listing::class, [
-        'id' => $listing->id,
-        'title' => 'Updated Title',
-        'company' => 'Updated Company',
-        'salary_min' => 130000,
-        'salary_max' => 180000,
-    ]);
+    $updated = Listing::find($listing->id);
+    expect($updated->title)->toBe('Updated Title')
+        ->and($updated->company)->toBe('Updated Company')
+        ->and($updated->salary_min)->toBe(130000)
+        ->and($updated->salary_max)->toBe(180000)
+        ->and($updated->manually_edited_at)->not->toBeNull();
 });
 
 it('can update relevance on the pivot directly', function () {

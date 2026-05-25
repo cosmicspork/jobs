@@ -47,6 +47,7 @@ class Listing extends Model
         'scraped_at',
         'enriched_at',
         'enrichment_source',
+        'manually_edited_at',
         'created_by_user_id',
     ];
 
@@ -114,6 +115,7 @@ class Listing extends Model
             'remote' => 'boolean',
             'scraped_at' => 'datetime',
             'enriched_at' => 'datetime',
+            'manually_edited_at' => 'datetime',
             'relevance' => Relevance::class,
             'scored_at' => 'datetime',
             'read_at' => 'datetime',

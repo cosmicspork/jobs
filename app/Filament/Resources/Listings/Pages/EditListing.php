@@ -33,6 +33,8 @@ class EditListing extends EditRecord
                 ]);
         }
 
+        $data['manually_edited_at'] = now();
+
         return $data;
     }
 
