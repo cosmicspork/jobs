@@ -3,7 +3,7 @@
 namespace App\Services\Scrapers;
 
 use Generator;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
  */
 class RemoteOkScraper implements ScraperInterface
 {
+    use FetchesUrls;
     use ParsesSalary;
 
     protected string $endpoint = 'https://remoteok.com/api';
@@ -26,9 +27,14 @@ class RemoteOkScraper implements ScraperInterface
      */
     public function scrape(): Generator
     {
-        $response = Http::withHeaders(['User-Agent' => 'jobs-app/1.0 (+https://github.com/cosmicspork/jobs)'])
+        $response = $this->fetch(fn (PendingRequest $http) => $http
+            ->withHeaders(['User-Agent' => 'jobs-app/1.0 (+https://github.com/cosmicspork/jobs)'])
             ->acceptJson()
-            ->get($this->endpoint);
+            ->get($this->endpoint));
+
+        if ($response === null) {
+            return;
+        }
 
         if (! $response->ok()) {
             Log::warning('RemoteOK scrape failed', [

@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Scrapers\WeWorkRemotelyScraper;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -127,6 +128,24 @@ it('sets source_url equal to url', function () {
 
     expect($listings[0]['url'])->toBe('https://weworkremotely.com/remote-jobs/acme-6')
         ->and($listings[0]['source_url'])->toBe($listings[0]['url']);
+});
+
+it('survives a connection failure on one category', function () {
+    // The back-end feed succeeds; every other category resets the connection mid-receive.
+    Http::fake(function (Request $request) {
+        if (Str::contains($request->url(), '/categories/remote-back-end-programming-jobs.rss')) {
+            return Http::response(wwrRss([
+                ['title' => 'Acme: Backend Engineer', 'guid' => 'wwr-conn', 'link' => 'https://weworkremotely.com/remote-jobs/acme-be-conn'],
+            ]));
+        }
+
+        throw new ConnectionException('cURL error 56: Recv failure: Connection reset by peer');
+    });
+
+    $listings = iterator_to_array((new WeWorkRemotelyScraper)->scrape(), preserve_keys: false);
+
+    expect($listings)->toHaveCount(1)
+        ->and($listings[0]['title'])->toBe('Backend Engineer');
 });
 
 it('skips categories that fail to load', function () {

@@ -63,6 +63,14 @@ it('returns empty array on failed request', function () {
     expect(iterator_to_array($scraper->scrape()))->toBeEmpty();
 });
 
+it('returns empty array on connection failure', function () {
+    Http::fake([
+        'larajobs.com/feed' => Http::failedConnection(),
+    ]);
+
+    expect(iterator_to_array((new LarajobsScraper)->scrape()))->toBeEmpty();
+});
+
 it('returns empty array on invalid xml', function () {
     Http::fake([
         'larajobs.com/feed' => Http::response('not xml at all'),

@@ -177,6 +177,14 @@ it('returns empty when the story search fails', function () {
     expect(iterator_to_array($scraper->scrape()))->toBeEmpty();
 });
 
+it('returns empty on connection failure', function () {
+    Http::fake([
+        'hn.algolia.com/*' => Http::failedConnection(),
+    ]);
+
+    expect(iterator_to_array((new HnHiringScraper)->scrape()))->toBeEmpty();
+});
+
 it('returns empty when no who is hiring story is found', function () {
     fakeAlgolia(story: [], commentPages: []);
 

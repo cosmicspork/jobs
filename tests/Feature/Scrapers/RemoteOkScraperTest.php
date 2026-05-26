@@ -142,6 +142,14 @@ it('returns empty on failed http', function () {
     expect(iterator_to_array((new RemoteOkScraper)->scrape()))->toBeEmpty();
 });
 
+it('returns empty on connection failure', function () {
+    Http::fake([
+        'remoteok.com/api' => Http::failedConnection(),
+    ]);
+
+    expect(iterator_to_array((new RemoteOkScraper)->scrape()))->toBeEmpty();
+});
+
 it('logs a warning when RemoteOK rejects the request', function () {
     Http::fake([
         'remoteok.com/api' => Http::response('Disable your VPN to access Remote OK', 403),

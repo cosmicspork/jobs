@@ -3,7 +3,7 @@
 namespace App\Services\Scrapers;
 
 use Generator;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
 
 /**
@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
  */
 class WeWorkRemotelyScraper implements ScraperInterface
 {
+    use FetchesUrls;
     use ParsesSalary;
 
     /** @var array<int, string> */
@@ -41,9 +42,9 @@ class WeWorkRemotelyScraper implements ScraperInterface
         $seen = [];
 
         foreach ($this->categories as $slug) {
-            $response = Http::get("https://weworkremotely.com/categories/{$slug}.rss");
+            $response = $this->fetch(fn (PendingRequest $http) => $http->get("https://weworkremotely.com/categories/{$slug}.rss"));
 
-            if (! $response->ok()) {
+            if ($response === null || ! $response->ok()) {
                 continue;
             }
 

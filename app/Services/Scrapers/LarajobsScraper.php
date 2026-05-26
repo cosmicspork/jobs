@@ -3,11 +3,12 @@
 namespace App\Services\Scrapers;
 
 use Generator;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
 
 class LarajobsScraper implements ScraperInterface
 {
+    use FetchesUrls;
     use ParsesSalary;
 
     protected string $feedUrl = 'https://larajobs.com/feed';
@@ -17,9 +18,9 @@ class LarajobsScraper implements ScraperInterface
      */
     public function scrape(): Generator
     {
-        $response = Http::get($this->feedUrl);
+        $response = $this->fetch(fn (PendingRequest $http) => $http->get($this->feedUrl));
 
-        if (! $response->ok()) {
+        if ($response === null || ! $response->ok()) {
             return;
         }
 

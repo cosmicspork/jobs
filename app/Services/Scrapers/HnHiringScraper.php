@@ -3,11 +3,12 @@
 namespace App\Services\Scrapers;
 
 use Generator;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
 
 class HnHiringScraper implements ScraperInterface
 {
+    use FetchesUrls;
     use ParsesSalary;
 
     protected string $searchUrl = 'https://hn.algolia.com/api/v1/search';
@@ -30,14 +31,14 @@ class HnHiringScraper implements ScraperInterface
         $page = 0;
 
         do {
-            $response = Http::get($this->searchByDateUrl, [
+            $response = $this->fetch(fn (PendingRequest $http) => $http->get($this->searchByDateUrl, [
                 'tags' => "comment,story_{$storyId}",
                 'numericFilters' => "parent_id={$storyId}",
                 'hitsPerPage' => $this->hitsPerPage,
                 'page' => $page,
-            ]);
+            ]));
 
-            if (! $response->ok()) {
+            if ($response === null || ! $response->ok()) {
                 return;
             }
 
@@ -60,13 +61,13 @@ class HnHiringScraper implements ScraperInterface
 
     protected function latestHiringStoryId(): ?int
     {
-        $response = Http::get($this->searchByDateUrl, [
+        $response = $this->fetch(fn (PendingRequest $http) => $http->get($this->searchByDateUrl, [
             'tags' => 'story,author_whoishiring',
             'query' => 'Ask HN: Who is hiring',
             'hitsPerPage' => 10,
-        ]);
+        ]));
 
-        if (! $response->ok()) {
+        if ($response === null || ! $response->ok()) {
             return null;
         }
 
