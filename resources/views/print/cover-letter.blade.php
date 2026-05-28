@@ -4,21 +4,25 @@
     <meta charset="UTF-8">
     <title>Cover Letter — {{ $profile['name'] }} — {{ $listing->company ?? 'Application' }}</title>
     <style>
-        @page { margin: 0.75in 1in; }
+        /* margin: 0 hands the page edges to .sheet padding so the browser has no
+           margin box to drop its auto headers/footers (URL, date, page number) into. */
+        @page { size: letter; margin: 0; }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { background: #f4f4f4; }
         body {
             font-family: Georgia, serif;
             font-size: 11pt;
             line-height: 1.6;
             color: #222;
             padding: 0.5in;
-            background: #f4f4f4;
         }
         .sheet {
             background: #fff;
             padding: 0.75in 1in;
-            max-width: 8.5in;
+            width: 8.5in;
+            max-width: 100%;
+            min-height: 11in;
             margin: 0 auto;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
         }
@@ -29,8 +33,9 @@
         .recipient { margin-bottom: 16pt; }
         .subject { font-weight: bold; margin-bottom: 16pt; }
         .salutation { margin-bottom: 12pt; }
-        .body p { margin-bottom: 12pt; text-align: justify; }
-        .signature { margin-top: 24pt; }
+        .body p { margin-bottom: 12pt; text-align: justify; orphans: 3; widows: 3; }
+        /* Keep the closing block intact rather than orphaning the signature. */
+        .signature { margin-top: 24pt; break-inside: avoid; page-break-inside: avoid; }
         .signature .contact { color: #666; font-size: 10pt; margin-top: 4pt; }
         .empty {
             background: #fff8e1;
@@ -42,8 +47,16 @@
         }
 
         @media print {
-            body { background: #fff; padding: 0; }
-            .sheet { box-shadow: none; padding: 0; max-width: none; }
+            html, body { background: #fff; }
+            body { padding: 0; }
+            .sheet {
+                box-shadow: none;
+                width: auto;
+                max-width: none;
+                min-height: 0;
+                margin: 0;
+                padding: 0.75in 1in;
+            }
             .empty { background: transparent; border-color: #999; }
         }
     </style>

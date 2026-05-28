@@ -26,6 +26,15 @@ it('renders the cover letter for the owning user', function () {
         ->toContain('window.print()');
 });
 
+it('uses borderless pages and keeps the signature intact', function () {
+    $user = login();
+    $application = Application::factory()->ready()->create(['user_id' => $user->id]);
+
+    expect($this->get(route('applications.print.cover-letter', $application))->getContent())
+        ->toContain('@page { size: letter; margin: 0; }')
+        ->toContain('page-break-inside: avoid');
+});
+
 it('returns 403 for a non-owner', function () {
     $owner = User::factory()->create();
     login(User::factory()->create());

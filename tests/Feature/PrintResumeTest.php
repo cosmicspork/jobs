@@ -19,6 +19,29 @@ it('renders the resume content for the owning user', function () {
         ->toContain('window.print()');
 });
 
+it('renders each skill as its own chip', function () {
+    $user = login();
+
+    $application = Application::factory()->ready()->create([
+        'user_id' => $user->id,
+        'resume_content' => ['summary' => 'A summary.', 'skills' => ['PHP', 'Laravel']],
+    ]);
+
+    expect($this->get(route('applications.print.resume', $application))->getContent())
+        ->toContain('<li>PHP</li>')
+        ->toContain('<li>Laravel</li>');
+});
+
+it('uses borderless pages and keeps sections from splitting awkwardly', function () {
+    $user = login();
+    $application = Application::factory()->ready()->create(['user_id' => $user->id]);
+
+    expect($this->get(route('applications.print.resume', $application))->getContent())
+        ->toContain('@page { size: letter; margin: 0; }')
+        ->toContain('page-break-inside: avoid')
+        ->toContain('page-break-after: avoid');
+});
+
 it('returns 403 for a user who does not own the application', function () {
     $owner = User::factory()->create();
     login(User::factory()->create());
@@ -44,4 +67,3 @@ it('shows an empty-state notice when the application has no resume content', fun
         ->toContain('No resume content yet')
         ->not->toContain('window.print()');
 });
-
