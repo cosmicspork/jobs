@@ -24,6 +24,8 @@ class EnrichListing implements ShouldQueue
 
     public int $backoff = 30;
 
+    public int $timeout = 120;
+
     public function __construct(public Listing $listing) {}
 
     public function handle(ListingEnricher $enricher): void

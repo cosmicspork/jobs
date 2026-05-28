@@ -17,6 +17,12 @@ class ExportUserData implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    public int $timeout = 120;
+
+    public int $backoff = 30;
+
     public function __construct(public User $user) {}
 
     public function handle(UserDataExporter $exporter): void

@@ -20,6 +20,8 @@ class ScoreListing implements ShouldQueue
 
     public int $tries = 5;
 
+    public int $timeout = 120;
+
     public function __construct(
         public Listing $listing,
         public TargetProfile $target,

@@ -16,6 +16,12 @@ class GenerateCoverLetter implements ShouldQueue
 {
     use Batchable, FreezesAiProvider, Queueable;
 
+    public int $tries = 3;
+
+    public int $timeout = 120;
+
+    public int $backoff = 30;
+
     public function __construct(public Application $application) {}
 
     public function handle(): void
