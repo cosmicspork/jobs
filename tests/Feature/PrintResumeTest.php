@@ -32,12 +32,13 @@ it('renders each skill as its own chip', function () {
         ->toContain('<li>Laravel</li>');
 });
 
-it('uses borderless pages and keeps sections from splitting awkwardly', function () {
+it('uses borderless pages, repeats page margins, and keeps sections from splitting awkwardly', function () {
     $user = login();
     $application = Application::factory()->ready()->create(['user_id' => $user->id]);
 
     expect($this->get(route('applications.print.resume', $application))->getContent())
         ->toContain('@page { size: letter; margin: 0; }')
+        ->toContain('box-decoration-break: clone')
         ->toContain('page-break-inside: avoid')
         ->toContain('page-break-after: avoid');
 });

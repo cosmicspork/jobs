@@ -56,6 +56,13 @@
                 min-height: 0;
                 margin: 0;
                 padding: 0.75in 1in;
+                /* Repeat the .sheet padding on every printed page so page 2+
+                   keeps the same margin instead of butting against the paper
+                   edge. @page margin stays 0 (no margin box → no browser
+                   headers/footers), so this padding is the only per-page
+                   margin. Browsers that ignore it fall back to a flush top. */
+                -webkit-box-decoration-break: clone;
+                box-decoration-break: clone;
             }
             .empty { background: transparent; border-color: #999; }
         }
