@@ -46,6 +46,9 @@ class SendDailyDigest extends Command
                         ->update(['digested_at' => now()]);
                 }
 
+                $user->daily_digest_sent_on = now()->timezone($user->timezone)->startOfDay();
+                $user->save();
+
                 $sent++;
             });
 
@@ -54,12 +57,24 @@ class SendDailyDigest extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * Whether the user is due for today's digest. True once their local
+     * digest_time has arrived and no digest has been sent on their local date
+     * yet. This is an at-or-after check rather than an exact-minute match, so a
+     * single coarse schedule:run — e.g. every 15 minutes on a hibernating
+     * instance — still delivers exactly one digest per day, at the first run at
+     * or after digest_time (and self-heals if a wake is missed).
+     */
     protected function isDueNow(User $user): bool
     {
-        $nowInTz = now()->timezone($user->timezone)->format('H:i');
-        $target = substr((string) $user->digest_time, 0, 5);
+        $nowInTz = now()->timezone($user->timezone);
+        $target = $nowInTz->copy()->setTimeFromTimeString(substr((string) $user->digest_time, 0, 5));
 
-        return $nowInTz === $target;
+        if ($nowInTz->lessThan($target)) {
+            return false;
+        }
+
+        return $user->daily_digest_sent_on?->toDateString() !== $nowInTz->toDateString();
     }
 
     /**

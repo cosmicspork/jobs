@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\DB;
  * @property bool $is_admin
  * @property bool $digest_enabled
  * @property string $digest_time
+ * @property Carbon|null $daily_digest_sent_on
  * @property string $timezone
  * @property string|null $monthly_ai_cap_usd
  */
@@ -350,6 +352,7 @@ class User extends Authenticatable implements FilamentUser
             'education' => 'array',
             'is_admin' => 'boolean',
             'digest_enabled' => 'boolean',
+            'daily_digest_sent_on' => 'date',
             'monthly_ai_cap_usd' => 'decimal:2',
         ];
     }
