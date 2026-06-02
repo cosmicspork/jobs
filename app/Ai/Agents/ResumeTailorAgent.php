@@ -65,8 +65,9 @@ class ResumeTailorAgent implements Agent, HasProviderOptions, HasStructuredOutpu
         application. Use the candidate's "summary" only for identity
         context (technical depth, scope, current work) to anchor the
         positioning in real experience. Adapt the language to match the
-        posting without losing the candidate's voice. 2-3 sentences,
-        first person implied.
+        posting without losing the candidate's voice. Hard limit: at most
+        3 sentences and 500 characters — a tight summary keeps the resume
+        on one page. First person implied.
 
         STEP 2 — SKILLS SELECTION:
         Choose 10-12 skills from the candidate's "skills" list that the
@@ -137,7 +138,10 @@ class ResumeTailorAgent implements Agent, HasProviderOptions, HasStructuredOutpu
     public function schema(JsonSchema $schema): array
     {
         return [
-            'summary' => $schema->string()->required(),
+            'summary' => $schema->string()
+                ->max(500)
+                ->description('Professional summary: at most 3 sentences and 500 characters.')
+                ->required(),
             'skills' => $schema->array()->items($schema->string())->required(),
             'experience' => $schema->array()->items($schema->object([
                 'role' => $schema->string()->required(),
