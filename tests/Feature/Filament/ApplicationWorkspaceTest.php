@@ -83,6 +83,23 @@ it('saves edits back to the JSON columns and the notes field', function () {
         ->and($application->notes)->toBe('A new note.');
 });
 
+it('rejects a professional summary longer than the one-page cap', function () {
+    $user = login();
+    $target = targetFor($user);
+    $listing = Listing::factory()->create();
+
+    $application = Application::factory()->ready()->create([
+        'user_id' => $user->id,
+        'listing_id' => $listing->id,
+        'target_profile_id' => $target->id,
+    ]);
+
+    Livewire::test(EditApplication::class, ['record' => $application->getRouteKey()])
+        ->fillForm(['resume_content.summary' => str_repeat('a', 501)])
+        ->call('save')
+        ->assertHasFormErrors(['resume_content.summary' => 'max']);
+});
+
 it('dispatches GenerateResume with extra_instructions when the regenerate action fires', function () {
     Queue::fake();
     $user = login();

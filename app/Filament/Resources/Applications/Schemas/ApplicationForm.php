@@ -71,6 +71,7 @@ class ApplicationForm
                     Textarea::make('resume_content.summary')
                         ->label('Professional summary')
                         ->rows(4)
+                        ->maxLength(500)
                         ->placeholder('Generate or paste the candidate summary…'),
                 ]),
             Section::make('Skills')

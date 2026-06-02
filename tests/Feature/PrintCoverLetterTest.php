@@ -26,12 +26,13 @@ it('renders the cover letter for the owning user', function () {
         ->toContain('window.print()');
 });
 
-it('uses borderless pages and keeps the signature intact', function () {
+it('uses borderless pages, repeats page margins, and keeps the signature intact', function () {
     $user = login();
     $application = Application::factory()->ready()->create(['user_id' => $user->id]);
 
     expect($this->get(route('applications.print.cover-letter', $application))->getContent())
         ->toContain('@page { size: letter; margin: 0; }')
+        ->toContain('box-decoration-break: clone')
         ->toContain('page-break-inside: avoid');
 });
 
