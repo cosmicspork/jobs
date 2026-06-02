@@ -115,6 +115,10 @@ it('short-circuits review with a notification when the provider is frozen on ent
 });
 
 it('surfaces a provider-frozen notification when the agent throws a usage-limit error', function () {
+    // Pin "now" before the regain-access date so the freeze TTL stays in the
+    // future regardless of the wall clock the suite runs on.
+    CarbonImmutable::setTestNow('2026-05-31 12:00:00');
+
     $this->user = login(User::factory()->ic()->create());
     $target = $this->user->targetProfiles()->first();
 

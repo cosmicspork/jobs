@@ -135,6 +135,10 @@ it('short-circuits scoring while the provider is frozen', function () {
 });
 
 it('freezes the provider and fires ProviderFrozen when a usage-limit AiException is thrown', function () {
+    // Pin "now" before the regain-access date so the freeze TTL stays in the
+    // future regardless of the wall clock the suite runs on.
+    CarbonImmutable::setTestNow('2026-05-31 12:00:00');
+
     Event::fake([ProviderFrozen::class]);
 
     JobScorerAgent::fake(function () {

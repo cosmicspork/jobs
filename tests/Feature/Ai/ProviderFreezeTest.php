@@ -76,6 +76,10 @@ it('falls back to a 6-hour freeze when the message mentions a usage limit but no
 });
 
 it('freezeIfUsageLimited writes cache, fires event, and returns the timestamp', function () {
+    // Pin "now" before the regain-access date so the freeze TTL stays in the
+    // future regardless of the wall clock the suite runs on.
+    CarbonImmutable::setTestNow('2026-05-31 12:00:00');
+
     Event::fake([ProviderFrozen::class]);
 
     $e = new AiException(
