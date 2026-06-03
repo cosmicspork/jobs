@@ -124,11 +124,25 @@ class Application extends Model
 
         $application->update($updates);
 
-        Bus::batch($jobs($application))
-            ->then(new MarkApplicationReady($application))
-            ->catch(new MarkApplicationFailed($application))
-            ->dispatch();
+        $application->dispatchGenerationBatch($jobs($application));
 
         return $application;
+    }
+
+    /**
+     * Dispatch generation jobs as a batch whose terminal callbacks settle this
+     * application's status: Ready on success, Failed on error. Every entry
+     * point — initial create and single-section regenerate from the workspace —
+     * MUST route through here, otherwise the application is left stranded in
+     * the Generating state once the jobs finish.
+     *
+     * @param  array<ShouldQueue>  $jobs
+     */
+    public function dispatchGenerationBatch(array $jobs): void
+    {
+        Bus::batch($jobs)
+            ->then(new MarkApplicationReady($this))
+            ->catch(new MarkApplicationFailed($this))
+            ->dispatch();
     }
 }
