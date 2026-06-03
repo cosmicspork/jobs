@@ -14,6 +14,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
 
@@ -55,6 +56,9 @@ class EditApplication extends EditRecord
         ];
     }
 
+    /**
+     * @param  class-string<ShouldQueue>  $jobClass
+     */
     private function regenerateAction(string $name, string $label, string $jobClass, string $subject): Action
     {
         return Action::make($name)
@@ -77,7 +81,7 @@ class EditApplication extends EditRecord
                     'status' => ApplicationStatus::Generating,
                 ]);
 
-                $jobClass::dispatch($record);
+                $record->dispatchGenerationBatch([new $jobClass($record)]);
 
                 Notification::make()
                     ->title("Regenerating {$subject}")

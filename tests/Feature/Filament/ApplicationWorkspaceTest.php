@@ -1,15 +1,18 @@
 <?php
 
+use App\Ai\Agents\ResumeTailorAgent;
+use App\ApplicationStatus;
 use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Jobs\GenerateCoverLetter;
 use App\Jobs\GenerateResume;
+use App\Jobs\MarkApplicationFailed;
+use App\Jobs\MarkApplicationReady;
 use App\Models\Application;
 use App\Models\Listing;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 it('lists only the signed-in users own applications on the index', function () {
@@ -100,8 +103,8 @@ it('rejects a professional summary longer than the one-page cap', function () {
         ->assertHasFormErrors(['resume_content.summary' => 'max']);
 });
 
-it('dispatches GenerateResume with extra_instructions when the regenerate action fires', function () {
-    Queue::fake();
+it('regenerates the resume through a batch that settles the status', function () {
+    Bus::fake();
     $user = login();
     $target = targetFor($user);
     $listing = Listing::factory()->create();
@@ -120,11 +123,22 @@ it('dispatches GenerateResume with extra_instructions when the regenerate action
 
     $application->refresh();
 
-    expect($application->extra_instructions)->toBe('Lead with queue-layer work.');
-    Queue::assertPushed(GenerateResume::class, fn ($job) => $job->application->is($application));
+    expect($application->extra_instructions)->toBe('Lead with queue-layer work.')
+        ->and($application->status)->toBe(ApplicationStatus::Generating);
+
+    Bus::assertBatched(function ($batch) use ($application) {
+        $then = $batch->thenCallbacks()[0] ?? null;
+        $catch = $batch->catchCallbacks()[0] ?? null;
+
+        return $batch->jobs->count() === 1
+            && $batch->jobs->first() instanceof GenerateResume
+            && $then instanceof MarkApplicationReady
+            && $then->application->is($application)
+            && $catch instanceof MarkApplicationFailed;
+    });
 });
 
-it('dispatches GenerateCoverLetter when the cover-letter regenerate action fires', function () {
+it('regenerates the cover letter through a batch that settles the status', function () {
     Bus::fake();
     $user = login();
     $target = targetFor($user);
@@ -142,5 +156,44 @@ it('dispatches GenerateCoverLetter when the cover-letter regenerate action fires
         ])
         ->assertNotified();
 
-    Bus::assertDispatched(GenerateCoverLetter::class);
+    Bus::assertBatched(function ($batch) use ($application) {
+        $then = $batch->thenCallbacks()[0] ?? null;
+        $catch = $batch->catchCallbacks()[0] ?? null;
+
+        return $batch->jobs->count() === 1
+            && $batch->jobs->first() instanceof GenerateCoverLetter
+            && $then instanceof MarkApplicationReady
+            && $then->application->is($application)
+            && $catch instanceof MarkApplicationFailed;
+    });
+});
+
+it('flips a regenerating application back to ready once the section finishes', function () {
+    ResumeTailorAgent::fake([
+        [
+            'summary' => 'Tailored summary for the role.',
+            'skills' => ['PHP / Laravel'],
+            'experience' => [],
+            'education' => [],
+            'keyword_matches' => [],
+        ],
+    ]);
+
+    $user = login();
+    $target = targetFor($user);
+    $listing = Listing::factory()->create();
+
+    $application = Application::factory()->ready()->create([
+        'user_id' => $user->id,
+        'listing_id' => $listing->id,
+        'target_profile_id' => $target->id,
+    ]);
+
+    Livewire::test(EditApplication::class, ['record' => $application->getRouteKey()])
+        ->callAction(TestAction::make('regenerateResume'), data: [
+            'extra_instructions' => null,
+        ])
+        ->assertNotified();
+
+    expect($application->fresh()->status)->toBe(ApplicationStatus::Ready);
 });
