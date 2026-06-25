@@ -58,6 +58,18 @@ it('aggregates items across multiple category feeds', function () {
         ->and($titles)->toContain('Frontend Engineer');
 });
 
+it('does not fetch non-engineering category feeds', function () {
+    fakeWwr([]);
+
+    iterator_to_array((new WeWorkRemotelyScraper)->scrape(), preserve_keys: false);
+
+    foreach (['remote-design-jobs', 'remote-customer-support-jobs', 'remote-sales-and-marketing-jobs', 'remote-product-jobs'] as $excluded) {
+        Http::assertNotSent(fn (Request $request) => Str::contains($request->url(), "/categories/{$excluded}.rss"));
+    }
+
+    Http::assertSent(fn (Request $request) => Str::contains($request->url(), '/categories/remote-back-end-programming-jobs.rss'));
+});
+
 it('dedupes items appearing in multiple categories by guid', function () {
     fakeWwr([
         'remote-back-end-programming-jobs' => [
