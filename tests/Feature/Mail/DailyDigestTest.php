@@ -229,8 +229,10 @@ it('renders empty state messages when nothing was screened', function () {
 
     $html = $mailable->render();
 
+    // The maybe section is omitted entirely when empty (digest ships
+    // relevant-only), so there is no maybe empty-state line.
     expect($html)
         ->toContain('No new relevant listings today.')
-        ->toContain('No new maybe listings today.')
-        ->toContain('No application updates.');
+        ->toContain('No application updates.')
+        ->not->toContain('No new maybe listings today.');
 });

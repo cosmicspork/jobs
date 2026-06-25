@@ -83,6 +83,7 @@ class ScoreListing implements ShouldQueue
             ->update([
                 'relevance' => $relevance,
                 'score_data' => [
+                    'fit_score' => $response['fit_score'] ?? null,
                     'matched_skills' => $response['matched_skills'],
                     'gaps' => $response['gaps'],
                     'reasoning' => $response['reasoning'],

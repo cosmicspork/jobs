@@ -96,35 +96,37 @@
             @endforelse
         </div>
 
-        {{-- Maybe Listings --}}
-        <div class="section">
-            <div class="section-title">
-                <span class="badge badge-yellow">Maybe</span>
-                Listings ({{ $maybeListings->count() }})
-            </div>
-            @forelse($maybeListings as $listing)
-                <div class="listing">
-                    <div class="listing-title">
-                        <a href="{{ $listing->url }}">{{ $listing->title }}</a>
-                    </div>
-                    <div class="listing-meta">
-                        {{ $listing->companyName() }}
-                        &middot; {{ $listing->board }}
-                        @if($listing->target_name ?? null)
-                            &middot; <span class="badge badge-blue">{{ $listing->target_name }}</span>
-                        @endif
-                    </div>
-                    @if(! empty($listing->score_data['reasoning']))
-                        <div class="listing-reason">{{ $listing->score_data['reasoning'] }}</div>
-                    @endif
-                    <div class="listing-links">
-                        <a href="{{ route('filament.admin.resources.listings.view', $listing) }}">View in Admin</a>
-                    </div>
+        {{-- Maybe Listings — only rendered when explicitly populated; the daily
+             digest now ships relevant-only, but the section stays so "maybe"
+             can be re-enabled without a template change. --}}
+        @if($maybeListings->isNotEmpty())
+            <div class="section">
+                <div class="section-title">
+                    <span class="badge badge-yellow">Maybe</span>
+                    Listings ({{ $maybeListings->count() }})
                 </div>
-            @empty
-                <p class="empty-state"><em>No new maybe listings today.</em></p>
-            @endforelse
-        </div>
+                @foreach($maybeListings as $listing)
+                    <div class="listing">
+                        <div class="listing-title">
+                            <a href="{{ $listing->url }}">{{ $listing->title }}</a>
+                        </div>
+                        <div class="listing-meta">
+                            {{ $listing->companyName() }}
+                            &middot; {{ $listing->board }}
+                            @if($listing->target_name ?? null)
+                                &middot; <span class="badge badge-blue">{{ $listing->target_name }}</span>
+                            @endif
+                        </div>
+                        @if(! empty($listing->score_data['reasoning']))
+                            <div class="listing-reason">{{ $listing->score_data['reasoning'] }}</div>
+                        @endif
+                        <div class="listing-links">
+                            <a href="{{ route('filament.admin.resources.listings.view', $listing) }}">View in Admin</a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
 
         {{-- Application Updates --}}
         <div class="section">

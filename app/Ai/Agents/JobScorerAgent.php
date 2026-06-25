@@ -65,19 +65,28 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput
         The candidate profile and active target are appended to this system
         prompt below. The job listing is provided inline in the user message.
 
-        STEP 1 — RELEVANCE CLASSIFICATION:
+        STEP 1 — RELEVANCE CLASSIFICATION (STRICT):
+        This search is deliberately high-precision. Most listings are NOT
+        relevant. Default to "irrelevant" unless the listing clears a high bar.
         Classify into one of three tiers:
 
-        - "relevant": Strong alignment with the target's positioning,
-          target_titles, and criteria, AND the candidate has the experience
-          and skills to be a credible applicant. Worth applying to.
-        - "maybe": Partial fit — adjacent enough to glance at but not a
-          strong match. Examples: right field but title doesn't quite line
-          up, or right title but the candidate's experience is light, or
-          good fit but a soft criterion (salary, location preference) is
-          off.
-        - "irrelevant": Wrong field, wrong level, missing core requirements,
-          or hits a hard criterion blocker.
+        - "relevant" (fit_score >= 75): The listing aligns on ALL THREE of:
+            (a) the target's required stack / seniority (see rule 4),
+            (b) target_titles — an exact or close-synonym title match,
+            (c) the positioning thesis in target.positioning.
+          A partial or adjacent match on only one or two of (a)/(b)/(c) does
+          NOT qualify. The candidate must also be a credible applicant. This is
+          a role worth applying to today.
+        - "maybe" (fit_score 55-74): RARE. Reserve for a genuine near-miss a
+          serious candidate would still glance at — e.g. all three axes align
+          but a single soft criterion is off (stated salary slightly low, a
+          secondary location), or the title is one notch off an otherwise
+          perfect match. A generalist role that merely uses some of the
+          candidate's languages (TypeScript, React, Node, Python, Go) but is
+          NOT what the target is aiming for is "irrelevant", NOT "maybe".
+        - "irrelevant" (fit_score < 55): Fails any of (a)/(b)/(c), wrong
+          field/level, missing the target's required stack, a generalist role
+          overlapping only on peripheral skills, or any hard-criterion blocker.
 
         WEIGHTING RULES (in priority order):
 
@@ -102,10 +111,16 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput
            the positioning (e.g., wrong company stage, wrong domain) should
            be downgraded.
 
-        4. Skill alignment: Strong positives come from skills in the
-           candidate's "skills" list that the listing emphasizes. Moderate
-           positives from adjacent technologies. Negatives from a stack the
-           candidate has no experience with that the listing demands.
+        4. Skill alignment — SCOPED TO THE TARGET, NOT THE CANDIDATE'S WHOLE
+           CATALOG: The relevant skill set for this run is the target's
+           REQUIRED stack, derived from target.positioning,
+           target.criteria.must_have_keywords, and target.target_titles. ONLY
+           skills in that target-required set count as positive signal. A match
+           on a peripheral or generalist skill the candidate happens to list
+           (e.g. TypeScript, React, Node) that the TARGET does not call for is
+           NEUTRAL and must NOT upgrade relevance. Negatives still come from a
+           target-required stack the candidate lacks. Populate matched_skills
+           ONLY with target-required skills the listing emphasizes.
 
         5. must_have_keywords (target.criteria): If set, listings that lack
            ALL of these are "irrelevant". Listings that hit some are
@@ -115,8 +130,14 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput
            description, and listed salary are positive transparency
            signals.
 
-        STEP 2 — EXTRACT SIGNALS:
-        - matched_skills: candidate skills that this listing calls for.
+        STEP 2 — FIT SCORE:
+        Emit fit_score (an integer 0-100) consistent with the tier: >= 75 for
+        "relevant", 55-74 for "maybe", < 55 for "irrelevant". The integer and
+        the relevance enum MUST agree.
+
+        STEP 3 — EXTRACT SIGNALS:
+        - matched_skills: target-required skills that this listing calls for
+          (per rule 4 — not generic overlap).
         - gaps: skills/requirements the candidate is missing or light on.
         - posting_quality_signals: transparency signals worth noting
           (named author, salary listed, specific interview process, etc.).
@@ -145,6 +166,9 @@ class JobScorerAgent implements Agent, HasProviderOptions, HasStructuredOutput
     {
         return [
             'relevance' => $schema->string()->enum(Relevance::class)->required(),
+            'fit_score' => $schema->integer()->min(0)->max(100)
+                ->description('Overall fit 0-100. >=75 relevant, 55-74 maybe, else irrelevant. Must agree with relevance.')
+                ->required(),
             'matched_skills' => $schema->array()->items($schema->string())->required(),
             'gaps' => $schema->array()->items($schema->string())->required(),
             'posting_quality_signals' => $schema->array()->items($schema->string()),
