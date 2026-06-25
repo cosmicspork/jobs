@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * SendDailyDigest hydrate Listing instances with columns aliased from
  * `listing_user`. These are not real Listing columns.
  *
+ * @property array<string, mixed>|null $raw_data
  * @property string|null $pivot_id
  * @property Relevance|null $relevance
  * @property array<string, mixed>|null $score_data
@@ -84,6 +85,23 @@ class Listing extends Model
     public function companyName(): string
     {
         return $this->company ?? 'Unknown';
+    }
+
+    /**
+     * Lower-cased haystack of all listing text for deterministic keyword
+     * gating (ListingFilter). raw_data is JSON-encoded so board-specific
+     * fields like location and tags are searchable without enumerating keys.
+     */
+    public function searchableText(): string
+    {
+        $raw = is_array($this->raw_data) ? (string) json_encode($this->raw_data) : '';
+
+        return mb_strtolower(trim(implode("\n", array_filter([
+            $this->title,
+            $this->company,
+            $this->description,
+            $raw,
+        ]))));
     }
 
     /**

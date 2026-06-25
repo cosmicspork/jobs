@@ -11,8 +11,12 @@ use Illuminate\Support\Str;
  *
  * The aggregate /remote-job-rss-feed is Cloudflare-challenged and returns 403
  * for non-browser clients. Per-category feeds at /categories/<slug>.rss are
- * not challenged. We aggregate across ~10 categories and dedupe by guid; the
- * three programming children replace the parent to avoid 4x overlap.
+ * not challenged. We aggregate across engineering-relevant categories and
+ * dedupe by guid; the three programming children replace the parent to avoid
+ * 4x overlap. Non-engineering categories (design, customer support, sales &
+ * marketing, product) are intentionally excluded — they never match the
+ * engineering/management targets this app scores for, and only inflate the
+ * funnel with listings that get filtered straight to irrelevant.
  */
 class WeWorkRemotelyScraper implements ScraperInterface
 {
@@ -25,10 +29,6 @@ class WeWorkRemotelyScraper implements ScraperInterface
         'remote-front-end-programming-jobs',
         'remote-full-stack-programming-jobs',
         'remote-devops-sysadmin-jobs',
-        'remote-design-jobs',
-        'remote-customer-support-jobs',
-        'remote-product-jobs',
-        'remote-sales-and-marketing-jobs',
         'remote-management-and-finance-jobs',
         'all-other-remote-jobs',
     ];

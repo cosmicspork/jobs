@@ -106,10 +106,22 @@ class SendDailyDigest extends Command
             return $pivot->listing;
         };
 
-        $relevantPivots = $scoredPivots->get(Relevance::Relevant->value, collect());
+        // Only "relevant" listings reach the inbox, ranked by fit_score (old
+        // rows without one sink to the bottom), then recency, and capped to a
+        // handful of high-quality matches. "maybe" pivots are still stamped as
+        // digested below so they don't resurface, but are excluded from the email.
+        $cap = (int) config('scoring.digest_relevant_cap', 10);
+
+        $relevantPivots = $scoredPivots->get(Relevance::Relevant->value, collect())
+            ->sortByDesc(fn (ListingUser $p) => [
+                $p->score_data['fit_score'] ?? -1,
+                $p->scored_at?->getTimestamp() ?? 0,
+            ])
+            ->take($cap)
+            ->values();
         $maybePivots = $scoredPivots->get(Relevance::Maybe->value, collect());
         $relevantListings = $relevantPivots->map($attachContext);
-        $maybeListings = $maybePivots->map($attachContext);
+        $maybeListings = collect();
 
         $applicationUpdates = Application::query()
             ->where('user_id', $user->id)
