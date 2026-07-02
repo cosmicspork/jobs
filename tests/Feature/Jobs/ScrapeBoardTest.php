@@ -222,6 +222,31 @@ it('does not re-dispatch EnrichListing for already-existing listings on re-scrap
     Bus::assertNotDispatched(EnrichListing::class);
 });
 
+it('collapses duplicate source_urls within a single scrape to the last occurrence', function () {
+    // A board can emit the same source_url twice in one pass (e.g. cross-posted
+    // under two categories). Postgres would reject the upsert with a cardinality
+    // violation; the dedup must collapse them to one row, keeping the last.
+    StubScraper::$rows = [
+        stubRow([
+            'url' => 'https://example.com/apply-a',
+            'source_url' => 'https://board.example.com/job/42',
+            'title' => 'First Copy',
+        ]),
+        stubRow([
+            'url' => 'https://example.com/apply-b',
+            'source_url' => 'https://board.example.com/job/42',
+            'title' => 'Second Copy',
+        ]),
+    ];
+
+    (new ScrapeBoard('hn', StubScraper::class))->handle();
+
+    $listing = Listing::sole();
+    expect($listing->title)->toBe('Second Copy')
+        ->and($listing->url)->toBe('https://example.com/apply-b')
+        ->and($listing->source_url)->toBe('https://board.example.com/job/42');
+});
+
 it('dedups by source_url even when apply url changes between scrapes', function () {
     StubScraper::$rows = [
         stubRow([
