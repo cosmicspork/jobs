@@ -87,6 +87,26 @@ it('inlines the listing payload into the user prompt', function () {
         ->not->toContain('listing_id: '.$listing->id);
 });
 
+it('scores without erroring when the model omits optional score_data keys', function () {
+    // The provider can return a structured response missing optional fields
+    // (observed in production: "reasoning" absent). Missing keys must default
+    // rather than raise "Undefined array key".
+    JobScorerAgent::fake(fn () => ['relevance' => 'relevant']);
+
+    (new ScoreListing($this->listing, $this->target))->handle();
+
+    expect($this->pivot->fresh())
+        ->relevance->toBe(Relevance::Relevant)
+        ->scored_at->not->toBeNull()
+        ->and($this->pivot->fresh()->score_data)->toBe([
+            'fit_score' => null,
+            'matched_skills' => [],
+            'gaps' => [],
+            'reasoning' => null,
+            'posting_quality_signals' => [],
+        ]);
+});
+
 it('exposes the failover map from config via providers()', function () {
     config(['ai.agents.scorer.failover' => [
         'anthropic' => 'claude-haiku-4-5-20251001',
