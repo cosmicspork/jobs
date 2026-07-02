@@ -84,9 +84,9 @@ class ScoreListing implements ShouldQueue
                 'relevance' => $relevance,
                 'score_data' => [
                     'fit_score' => $response['fit_score'] ?? null,
-                    'matched_skills' => $response['matched_skills'],
-                    'gaps' => $response['gaps'],
-                    'reasoning' => $response['reasoning'],
+                    'matched_skills' => $response['matched_skills'] ?? [],
+                    'gaps' => $response['gaps'] ?? [],
+                    'reasoning' => $response['reasoning'] ?? null,
                     'posting_quality_signals' => $response['posting_quality_signals'] ?? [],
                 ],
                 'scored_at' => now(),
