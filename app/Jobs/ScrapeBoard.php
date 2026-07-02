@@ -33,6 +33,13 @@ class ScrapeBoard implements ShouldQueue
 
         /** @var array<int, array<string, mixed>> $rows */
         $rows = iterator_to_array($scraper->scrape(), preserve_keys: false);
+
+        // A single scrape can surface the same source_url more than once (e.g. a
+        // job cross-posted under multiple categories). Postgres rejects an upsert
+        // whose batch proposes duplicate conflict-target values ("ON CONFLICT DO
+        // UPDATE command cannot affect row a second time"), so collapse to the
+        // last occurrence per source_url before building the payloads.
+        $rows = collect($rows)->keyBy('source_url')->values()->all();
         $total = count($rows);
 
         if ($total === 0) {
