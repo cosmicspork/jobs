@@ -21,7 +21,10 @@ class BackfillAiUsageCosts extends Command
             ->whereNotNull('provider')
             ->chunkById(100, function ($records) use (&$updated): void {
                 foreach ($records as $record) {
-                    $pricing = config("ai.pricing.{$record->provider}.{$record->model}");
+                    // See LogAiUsage::calculateCost — dotted OpenRouter slugs
+                    // must be indexed into the provider array, not looked up via
+                    // config() dot-notation.
+                    $pricing = config("ai.pricing.{$record->provider}", [])[$record->model] ?? null;
 
                     if (! $pricing) {
                         continue;

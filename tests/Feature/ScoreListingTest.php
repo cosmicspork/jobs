@@ -110,14 +110,14 @@ it('scores without erroring when the model omits optional score_data keys', func
 it('exposes the failover map from config via providers()', function () {
     config(['ai.agents.scorer.failover' => [
         'anthropic' => 'claude-haiku-4-5-20251001',
-        'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+        'openrouter' => 'anthropic/claude-haiku-4.5',
     ]]);
 
     $agent = new JobScorerAgent($this->user, $this->target);
 
     expect($agent->providers())->toBe([
         'anthropic' => 'claude-haiku-4-5-20251001',
-        'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+        'openrouter' => 'anthropic/claude-haiku-4.5',
     ]);
 });
 
@@ -127,6 +127,22 @@ it('returns an empty failover array when none is configured', function () {
     $agent = new JobScorerAgent($this->user, $this->target);
 
     expect($agent->providers())->toBe([]);
+});
+
+it('has a pricing entry for every model in the default scorer failover map', function () {
+    // A failover model the provider rejects (e.g. an Anthropic-style dated ID
+    // sent to OpenRouter) throws a 400 the moment failover fires, and even a
+    // model the provider accepts silently prices at zero if it is missing from
+    // config('ai.pricing'). Both failure modes are caught by requiring the two
+    // maps to agree, so the OpenRouter slug must match its pricing key exactly.
+    $failover = config('ai.agents.scorer.failover');
+
+    foreach ($failover as $provider => $model) {
+        // Index into the provider array directly — dotted OpenRouter slugs
+        // (e.g. "anthropic/claude-haiku-4.5") break config() dot-notation.
+        expect(config("ai.pricing.{$provider}", [])[$model] ?? null)
+            ->not->toBeNull("missing pricing for {$provider} / {$model}");
+    }
 });
 
 it('exposes Anthropic prompt-cache control via providerOptions', function () {
@@ -199,7 +215,7 @@ it('rethrows non-usage-limit AiExceptions so existing retry handling fires', fun
 it('fails over to the next provider when the primary is overloaded', function () {
     config(['ai.agents.scorer.failover' => [
         'anthropic' => 'claude-haiku-4-5-20251001',
-        'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+        'openrouter' => 'anthropic/claude-haiku-4.5',
     ]]);
 
     JobScorerAgent::fake(function ($prompt, $attachments, $provider) {
