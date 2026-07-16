@@ -40,7 +40,7 @@ return [
                 // Only FailoverableException (rate-limit / overload) triggers
                 // failover — not provider-cap or spending-limit errors.
                 'anthropic' => 'claude-haiku-4-5-20251001',
-                'openrouter' => 'anthropic/claude-haiku-4-5-20251001',
+                'openrouter' => 'anthropic/claude-haiku-4.5',
             ],
         ],
         'resume_tailor' => [
@@ -82,6 +82,7 @@ return [
         'openrouter' => [
             'anthropic/claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
             'anthropic/claude-4.6-sonnet-20260217' => ['input' => 3.00, 'output' => 15.00, 'cacheWrite' => 3.75, 'cacheRead' => 0.30],
+            'anthropic/claude-haiku-4.5' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
             'anthropic/claude-haiku-4-5' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
             'anthropic/claude-4.5-haiku-20251001' => ['input' => 1.00, 'output' => 5.00, 'cacheWrite' => 1.25, 'cacheRead' => 0.10],
         ],

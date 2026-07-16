@@ -33,7 +33,11 @@ class LogAiUsage
 
     private function calculateCost(?string $provider, ?string $model, Usage $usage): float
     {
-        $pricing = config("ai.pricing.{$provider}.{$model}");
+        // Index the model into the provider's pricing array directly rather than
+        // via config() dot-notation: OpenRouter slugs contain a dot (e.g.
+        // "anthropic/claude-haiku-4.5"), which config() would parse as a nested
+        // key and fail to resolve, silently zeroing the cost.
+        $pricing = config("ai.pricing.{$provider}", [])[$model] ?? null;
 
         if (! $pricing) {
             return 0;

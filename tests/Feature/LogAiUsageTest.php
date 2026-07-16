@@ -121,6 +121,17 @@ it('still prices historical openrouter haiku rows', function () {
     expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
 });
 
+it('prices openrouter haiku rows whose slug contains a dot', function () {
+    // Regression: config() dot-notation parses the "4.5" in the slug as a
+    // nested key, so the pricing lookup must index the provider array directly.
+    $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
+    $meta = new Meta(provider: 'openrouter', model: 'anthropic/claude-haiku-4.5');
+
+    (new LogAiUsage)->handle(buildEvent($usage, $meta));
+
+    expect(round((float) AiUsage::first()->cost, 2))->toBe(6.00);
+});
+
 it('still prices historical openrouter sonnet rows', function () {
     $usage = new Usage(promptTokens: 1_000_000, completionTokens: 1_000_000);
     $meta = new Meta(provider: 'openrouter', model: 'anthropic/claude-sonnet-4-6');
