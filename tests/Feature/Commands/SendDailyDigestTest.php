@@ -15,6 +15,15 @@ use Illuminate\Support\Facades\Mail;
 beforeEach(function () {
     Mail::fake();
 
+    // Freeze the clock to midday in the test timezone. The suite derives
+    // digest_time from now(), and SendDailyDigest::isDueNow() re-anchors that
+    // H:i to the user's current local date. On a live wall-clock near 23:00 CT,
+    // now()->addHour() rolled past midnight and formatted back to an early-hours
+    // H:i that isDueNow() then read as earlier "today", flipping the due/not-due
+    // assertions. Midday leaves an hour of headroom on both sides, so the "one
+    // hour ahead is not yet due" case is deterministic.
+    $this->travelTo(Carbon::parse('2026-06-15 12:00:00', 'America/Chicago'));
+
     // Disable digest for any seeded users so only our test user triggers sends
     User::query()->update(['digest_enabled' => false]);
 
