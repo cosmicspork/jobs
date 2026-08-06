@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\ApplicationOutcome;
 use App\Relevance;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $read_at
  * @property Carbon|null $starred_at
  * @property Carbon|null $shortlisted_at
+ * @property Carbon|null $applied_at
+ * @property ApplicationOutcome|null $outcome
+ * @property Carbon|null $outcome_at
  * @property Carbon|null $dismissed_at
  * @property Carbon|null $digested_at
  */
@@ -43,6 +47,9 @@ class ListingUser extends Pivot
         'read_at',
         'starred_at',
         'shortlisted_at',
+        'applied_at',
+        'outcome',
+        'outcome_at',
         'dismissed_at',
         'digested_at',
     ];
@@ -89,6 +96,49 @@ class ListingUser extends Pivot
     public function toggleDismissed(): void
     {
         $this->updateAllForListingUser(['dismissed_at' => $this->dismissed_at ? null : now()]);
+    }
+
+    /**
+     * Applying is recorded here, not by the existence of an Application row —
+     * the AI workspace is optional and most applications never involve it.
+     * Un-applying clears the outcome, which is meaningless without it.
+     */
+    public function toggleApplied(): void
+    {
+        $this->updateAllForListingUser($this->applied_at
+            ? ['applied_at' => null, 'outcome' => null, 'outcome_at' => null]
+            : ['applied_at' => now()]);
+    }
+
+    public function setOutcome(?ApplicationOutcome $outcome): void
+    {
+        $this->updateAllForListingUser([
+            'outcome' => $outcome?->value,
+            'outcome_at' => $outcome ? now() : null,
+        ]);
+    }
+
+    /**
+     * Promoting variants used by the reading room. Stages are exclusive, so
+     * advancing has to also mark the listing read or it never leaves the Inbox.
+     * The plain toggles stay for the table's icon columns, which are a
+     * different gesture: flagging in place, not moving through the pipeline.
+     */
+    public function star(): void
+    {
+        $this->updateAllForListingUser([
+            'starred_at' => now(),
+            'read_at' => $this->read_at ?? now(),
+        ]);
+    }
+
+    /** Shortlisting implies read, but not starred — starring is its own signal. */
+    public function shortlist(): void
+    {
+        $this->updateAllForListingUser([
+            'shortlisted_at' => now(),
+            'read_at' => $this->read_at ?? now(),
+        ]);
     }
 
     public static function forUserListing(int $userId, string $listingId): ?static
@@ -149,6 +199,12 @@ class ListingUser extends Pivot
     }
 
     /**
+     * User-state flags are per (listing, user), but there is one pivot row per
+     * target profile, so every flag has to be written across all of them.
+     *
+     * This goes through the query builder, so casts() never runs — pass scalars
+     * (`$enum->value`, not the enum instance).
+     *
      * @param  array<string, mixed>  $values
      */
     private function updateAllForListingUser(array $values): void
@@ -171,6 +227,9 @@ class ListingUser extends Pivot
             'read_at' => 'datetime',
             'starred_at' => 'datetime',
             'shortlisted_at' => 'datetime',
+            'applied_at' => 'datetime',
+            'outcome' => ApplicationOutcome::class,
+            'outcome_at' => 'datetime',
             'dismissed_at' => 'datetime',
             'digested_at' => 'datetime',
         ];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\ApplicationOutcome;
 use App\Relevance;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -24,6 +25,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $read_at
  * @property Carbon|null $starred_at
  * @property Carbon|null $shortlisted_at
+ * @property Carbon|null $applied_at
+ * @property ApplicationOutcome|null $outcome
+ * @property Carbon|null $outcome_at
  * @property Carbon|null $dismissed_at
  * @property string|null $target_profile_id
  * @property string|null $target_name
@@ -62,6 +66,7 @@ class Listing extends Model
             ->withPivot([
                 'id', 'relevance', 'score_data', 'scored_at',
                 'read_at', 'starred_at', 'shortlisted_at', 'dismissed_at',
+                'applied_at', 'outcome', 'outcome_at',
             ])
             ->withTimestamps();
     }
@@ -139,6 +144,9 @@ class Listing extends Model
             'read_at' => 'datetime',
             'starred_at' => 'datetime',
             'shortlisted_at' => 'datetime',
+            'applied_at' => 'datetime',
+            'outcome' => ApplicationOutcome::class,
+            'outcome_at' => 'datetime',
             'dismissed_at' => 'datetime',
             'score_data' => 'array',
         ];
