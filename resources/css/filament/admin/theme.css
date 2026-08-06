@@ -63,36 +63,36 @@
     position: relative;
     display: block;
     width: 100%;
-    padding: 0.75rem 0.875rem 1rem;
+    padding: 0.5rem 0.875rem 0.625rem;
     text-align: start;
     cursor: pointer;
 }
 
-.rr-row::before,
+/*
+ * No track behind the rule. A full-width track would read as a border and the
+ * varying length would be lost in it; on its own the ragged right edge is the
+ * whole point, and it doubles as the row separator.
+ */
 .rr-row::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0.875rem;
-    height: 2px;
+    height: 1.5px;
     border-radius: 1px;
-}
-
-/* Track: the full width the score is measured against. */
-.rr-row::before {
-    right: 0.875rem;
-    background: var(--rr-rule-track);
-}
-
-.rr-row::after {
     width: calc((100% - 1.75rem) * var(--rr-score, 0) / 100);
     background: var(--rr-rule);
+    opacity: 0.45;
 }
 
-/* Unscored listings get no rule rather than a misleading zero. */
-.rr-row[data-unscored]::before,
+.rr-row[aria-selected='true']::after {
+    opacity: 0.9;
+}
+
+/* Unscored listings get a hairline stub rather than a misleading zero. */
 .rr-row[data-unscored]::after {
-    display: none;
+    width: 0.75rem;
+    opacity: 0.2;
 }
 
 .rr-row[aria-selected='true'] {
