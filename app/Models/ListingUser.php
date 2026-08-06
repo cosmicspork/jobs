@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Relevance;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property string $id
@@ -105,6 +108,44 @@ class ListingUser extends Pivot
     public static function orderByRelevanceSql(string $column = 'relevance'): string
     {
         return "CASE {$column} WHEN 'relevant' THEN 0 WHEN 'maybe' THEN 1 WHEN 'irrelevant' THEN 2 ELSE 99 END";
+    }
+
+    /**
+     * Correlated subquery picking the single best-relevance pivot per listing.
+     * There is one pivot per (listing, target profile), so every query over
+     * listings has to collapse them or it fans out one row per target.
+     */
+    public static function bestPivotIdSubquery(int $userId): QueryBuilder
+    {
+        return DB::table('listing_user as inner_lu')
+            ->select('inner_lu.id')
+            ->whereColumn('inner_lu.listing_id', 'listings.id')
+            ->where('inner_lu.user_id', $userId)
+            ->orderByRaw(self::orderByRelevanceSql('inner_lu.relevance'))
+            ->orderByDesc('inner_lu.scored_at')
+            ->limit(1);
+    }
+
+    /**
+     * Join a listings query to the user's best pivot per listing, plus that
+     * pivot's target profile. Callers supply their own select list.
+     *
+     * @param  Builder<Listing>  $query
+     * @return Builder<Listing>
+     */
+    public static function joinBestPivot(Builder $query, int $userId): Builder
+    {
+        $bestPivotId = self::bestPivotIdSubquery($userId);
+
+        return $query
+            ->join('listing_user', function ($join) use ($userId, $bestPivotId) {
+                // Interpolated rather than bound: bindings inside a join closure
+                // are collected before the where bindings and would reorder.
+                $join->on('listings.id', '=', 'listing_user.listing_id')
+                    ->where('listing_user.user_id', $userId)
+                    ->whereRaw('listing_user.id = ('.$bestPivotId->toRawSql().')');
+            })
+            ->leftJoin('target_profiles', 'listing_user.target_profile_id', '=', 'target_profiles.id');
     }
 
     /**

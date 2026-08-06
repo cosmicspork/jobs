@@ -18,7 +18,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 class ListingsTable
 {
@@ -28,21 +27,7 @@ class ListingsTable
             ->modifyQueryUsing(function ($query, HasTable $livewire) {
                 $userId = auth()->id();
 
-                $bestPivotId = DB::table('listing_user as inner_lu')
-                    ->select('inner_lu.id')
-                    ->whereColumn('inner_lu.listing_id', 'listings.id')
-                    ->where('inner_lu.user_id', $userId)
-                    ->orderByRaw(ListingUser::orderByRelevanceSql('inner_lu.relevance'))
-                    ->orderByDesc('inner_lu.scored_at')
-                    ->limit(1);
-
-                $query
-                    ->join('listing_user', function ($join) use ($userId, $bestPivotId) {
-                        $join->on('listings.id', '=', 'listing_user.listing_id')
-                            ->where('listing_user.user_id', $userId)
-                            ->whereRaw('listing_user.id = ('.$bestPivotId->toRawSql().')');
-                    })
-                    ->leftJoin('target_profiles', 'listing_user.target_profile_id', '=', 'target_profiles.id')
+                ListingUser::joinBestPivot($query, $userId)
                     ->withCount(['applications' => fn ($q) => $q->where('user_id', $userId)])
                     ->select([
                         'listings.*',
