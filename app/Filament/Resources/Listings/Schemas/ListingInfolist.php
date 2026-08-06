@@ -176,10 +176,11 @@ class ListingInfolist
                                     ->placeholder('Unknown target'),
                                 TextEntry::make('status')
                                     ->badge(),
-                                TextEntry::make('applied_at')
-                                    ->label('Applied')
+                                // Not "Applied" — that lives on the pivot now.
+                                // This is when the draft was started.
+                                TextEntry::make('created_at')
+                                    ->label('Draft started')
                                     ->since()
-                                    ->placeholder('Not applied')
                                     ->color('gray'),
                                 Actions::make([
                                     Action::make('openWorkspace')

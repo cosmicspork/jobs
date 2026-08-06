@@ -20,7 +20,10 @@ class ApplicationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $navigationLabel = 'Applications';
+    // "Applied" is pipeline state on listing_user; this resource is only the
+    // generated documents, which are optional. Naming it apart keeps the two
+    // from reading as the same thing.
+    protected static ?string $navigationLabel = 'AI Drafts';
 
     protected static ?string $recordTitleAttribute = 'id';
 

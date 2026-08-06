@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\Bus;
  * @property User $user
  * @property TargetProfile $targetProfile
  * @property ApplicationStatus|null $status
- * @property Carbon|null $applied_at
+ * @property Carbon|null $applied_at Legacy and always null. Applied state lives
+ *                                   on listing_user; this is kept only so the user data export keeps its
+ *                                   shape. Do not wire it up again.
  */
 class Application extends Model
 {

@@ -142,6 +142,9 @@ class UserDataExporter
                 'read_at' => $pivot->read_at?->toIso8601String(),
                 'starred_at' => $pivot->starred_at?->toIso8601String(),
                 'shortlisted_at' => $pivot->shortlisted_at?->toIso8601String(),
+                'applied_at' => $pivot->applied_at?->toIso8601String(),
+                'outcome' => $pivot->outcome?->value,
+                'outcome_at' => $pivot->outcome_at?->toIso8601String(),
                 'dismissed_at' => $pivot->dismissed_at?->toIso8601String(),
             ])
             ->all();
