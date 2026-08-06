@@ -1,0 +1,126 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@plugin '@tailwindcss/typography';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/*
+ * Reading room — the triage surface.
+ *
+ * One channel per meaning: fit score is encoded as length only, never colour.
+ * Colour is reserved for pipeline state, so a hundred rows stay scannable and
+ * the score reads the same regardless of colour vision.
+ */
+
+:root {
+    --rr-rule: rgb(100 116 139);
+    --rr-rule-track: rgb(226 232 240);
+}
+
+.dark {
+    --rr-rule: rgb(148 163 184);
+    --rr-rule-track: rgb(51 65 85);
+}
+
+.rr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    height: calc(100vh - 13rem);
+    min-height: 32rem;
+}
+
+@media (min-width: 1024px) {
+    .rr {
+        grid-template-columns: 22rem minmax(0, 1fr);
+    }
+}
+
+.rr-pane {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Below lg only one pane is on screen at a time. */
+@media (max-width: 1023px) {
+    .rr[data-focus='detail'] .rr-rail,
+    .rr:not([data-focus='detail']) .rr-detail {
+        display: none;
+    }
+}
+
+.rr-rail:focus {
+    outline: none;
+}
+
+/*
+ * The signature: each row's bottom rule is drawn at a width proportional to
+ * fit_score. Scanning down, the ragged edge shows where the queue's quality
+ * falls off — the point where the rules get short is where to stop reading.
+ */
+.rr-row {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.875rem 1rem;
+    text-align: start;
+    cursor: pointer;
+}
+
+.rr-row::before,
+.rr-row::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0.875rem;
+    height: 2px;
+    border-radius: 1px;
+}
+
+/* Track: the full width the score is measured against. */
+.rr-row::before {
+    right: 0.875rem;
+    background: var(--rr-rule-track);
+}
+
+.rr-row::after {
+    width: calc((100% - 1.75rem) * var(--rr-score, 0) / 100);
+    background: var(--rr-rule);
+}
+
+/* Unscored listings get no rule rather than a misleading zero. */
+.rr-row[data-unscored]::before,
+.rr-row[data-unscored]::after {
+    display: none;
+}
+
+.rr-row[aria-selected='true'] {
+    background: color-mix(in oklab, var(--rr-rule) 12%, transparent);
+    box-shadow: inset 3px 0 0 var(--rr-rule);
+}
+
+/* Selection and focus are distinct: after opening a posting in a new tab the
+   row is still selected but no longer focused. */
+.rr-row:focus-visible {
+    outline: 2px solid var(--rr-rule);
+    outline-offset: -2px;
+}
+
+.rr-score {
+    font-variant-numeric: tabular-nums;
+}
+
+.rr-detail :where(.prose) {
+    max-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rr *,
+    .rr *::before,
+    .rr *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
