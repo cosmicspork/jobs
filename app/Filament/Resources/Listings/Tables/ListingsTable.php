@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Listings\Tables;
 
+use App\ApplicationOutcome;
 use App\Filament\Resources\Listings\Pages\ListListings;
 use App\Models\Listing;
 use App\Models\ListingUser;
@@ -11,6 +12,7 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Contracts\HasTable;
@@ -28,7 +30,6 @@ class ListingsTable
                 $userId = auth()->id();
 
                 ListingUser::joinBestPivot($query, $userId)
-                    ->withCount(['applications' => fn ($q) => $q->where('user_id', $userId)])
                     ->select([
                         'listings.*',
                         'listing_user.id as pivot_id',
@@ -75,11 +76,27 @@ class ListingsTable
                         ListingUser::forUserListing(auth()->id(), $record->id)?->toggleShortlisted();
                     })
                     ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['all', 'starred'])),
-                IconColumn::make('applications_count')
+                IconColumn::make('applied_at')
                     ->label('Applied')
-                    ->icon(fn (Listing $record): ?string => $record->applications_count > 0 ? 'heroicon-s-check-circle' : null)
-                    ->color('success')
-                    ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['starred', 'all'])),
+                    ->state(fn (Listing $record): bool => (bool) $record->applied_at)
+                    ->icon(fn (Listing $record): string => $record->applied_at
+                        ? 'heroicon-s-check-circle'
+                        : 'heroicon-o-check-circle')
+                    ->color(fn (Listing $record): string => $record->applied_at ? 'success' : 'gray')
+                    ->action(function (Listing $record): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->toggleApplied();
+                    })
+                    ->visible(fn (ListListings $livewire): bool => in_array($livewire->activeTab, ['shortlisted', 'starred', 'all'])),
+                TextColumn::make('outcome')
+                    ->label('Outcome')
+                    ->badge()
+                    ->placeholder('No reply yet')
+                    ->visible(fn (ListListings $livewire): bool => $livewire->activeTab === 'applied'),
+                TextColumn::make('applied_at')
+                    ->label('Applied')
+                    ->since()
+                    ->color('gray')
+                    ->visible(fn (ListListings $livewire): bool => $livewire->activeTab === 'applied'),
                 TextColumn::make('match')
                     ->label('Match')
                     ->state(fn (Listing $record): string => $record->target_name
@@ -117,8 +134,8 @@ class ListingsTable
             ->emptyStateDescription(fn (ListListings $livewire): string => match ($livewire->activeTab) {
                 'inbox' => 'New relevant and maybe matches will land here as they are scored.',
                 'starred' => 'Star a listing to keep it handy.',
-                'shortlisted' => 'Shortlist a listing to queue it for an application.',
-                'applied' => 'Listings you generate an application for will appear here.',
+                'shortlisted' => 'Shortlist a listing to queue it up to apply for.',
+                'applied' => 'Listings you mark as applied will appear here, newest first.',
                 default => 'Listings will appear here once boards are scraped and scored.',
             })
             ->filters([
@@ -142,6 +159,12 @@ class ListingsTable
                         true: fn ($query) => $query->whereNotNull('listing_user.starred_at'),
                         false: fn ($query) => $query->whereNull('listing_user.starred_at'),
                     ),
+                TernaryFilter::make('applied')
+                    ->label('Applied')
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('listing_user.applied_at'),
+                        false: fn ($query) => $query->whereNull('listing_user.applied_at'),
+                    ),
                 TernaryFilter::make('dismissed')
                     ->label('Dismissed')
                     ->placeholder('Hidden')
@@ -161,6 +184,9 @@ class ListingsTable
                 SelectFilter::make('relevance')
                     ->options(Relevance::class)
                     ->query(fn ($query, $data) => $data['value'] ? $query->where('listing_user.relevance', $data['value']) : $query),
+                SelectFilter::make('outcome')
+                    ->options(ApplicationOutcome::class)
+                    ->query(fn ($query, $data) => $data['value'] ? $query->where('listing_user.outcome', $data['value']) : $query),
                 SelectFilter::make('target')
                     ->label('Target')
                     ->options(fn () => auth()->user()
@@ -175,6 +201,29 @@ class ListingsTable
                     ->icon(fn (Listing $record): string => $record->read_at ? 'heroicon-o-envelope' : 'heroicon-o-envelope-open')
                     ->action(function (Listing $record): void {
                         ListingUser::forUserListing(auth()->id(), $record->id)?->toggleRead();
+                    }),
+                Action::make('toggleApplied')
+                    ->label(fn (Listing $record): string => $record->applied_at ? 'Mark Not Applied' : 'Mark Applied')
+                    ->icon('heroicon-o-check-circle')
+                    ->action(function (Listing $record): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->toggleApplied();
+                    }),
+                Action::make('setOutcome')
+                    ->label('Record Outcome')
+                    ->icon('heroicon-o-flag')
+                    ->visible(fn (Listing $record): bool => (bool) $record->applied_at)
+                    ->fillForm(fn (Listing $record): array => ['outcome' => $record->outcome?->value])
+                    ->schema([
+                        Select::make('outcome')
+                            ->label('Outcome')
+                            ->options(ApplicationOutcome::class)
+                            ->placeholder('No reply yet')
+                            ->native(false),
+                    ])
+                    ->action(function (Listing $record, array $data): void {
+                        ListingUser::forUserListing(auth()->id(), $record->id)?->setOutcome(
+                            $data['outcome'] ? ApplicationOutcome::from($data['outcome']) : null,
+                        );
                     }),
                 Action::make('toggleDismissed')
                     ->label(fn (Listing $record): string => $record->dismissed_at ? 'Restore' : 'Dismiss')

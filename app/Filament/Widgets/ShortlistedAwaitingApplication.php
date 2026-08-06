@@ -29,7 +29,7 @@ class ShortlistedAwaitingApplication extends TableWidget
                 ListingUser::joinBestPivot(Listing::query(), $userId)
                     ->whereNotNull('listing_user.shortlisted_at')
                     ->whereNull('listing_user.dismissed_at')
-                    ->whereDoesntHave('applications', fn ($q) => $q->where('user_id', $userId))
+                    ->whereNull('listing_user.applied_at')
                     ->select([
                         'listings.*',
                         'listing_user.relevance',

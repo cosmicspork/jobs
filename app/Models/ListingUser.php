@@ -177,6 +177,39 @@ class ListingUser extends Pivot
     }
 
     /**
+     * Constrain a query to one pipeline stage. Stages are exclusive: each one
+     * means "currently here", not "ever flagged", so a listing drains forward
+     * as it is acted on and appears in exactly one tab.
+     *
+     * Works on both the pivot table directly (counts, prefix '') and a listings
+     * query joined to it (tables and the reading room, prefix 'listing_user.').
+     *
+     * @param  Builder<Listing>|Builder<self>|QueryBuilder  $query
+     */
+    public static function applyStage(Builder|QueryBuilder $query, string $stage, string $prefix = ''): void
+    {
+        $col = fn (string $column): string => $prefix.$column;
+
+        match ($stage) {
+            'inbox' => $query
+                ->whereNull($col('read_at'))
+                ->whereIn($col('relevance'), [Relevance::Relevant, Relevance::Maybe])
+                ->whereNull($col('starred_at'))
+                ->whereNull($col('shortlisted_at'))
+                ->whereNull($col('applied_at')),
+            'starred' => $query
+                ->whereNotNull($col('starred_at'))
+                ->whereNull($col('shortlisted_at'))
+                ->whereNull($col('applied_at')),
+            'shortlisted' => $query
+                ->whereNotNull($col('shortlisted_at'))
+                ->whereNull($col('applied_at')),
+            'applied' => $query->whereNotNull($col('applied_at')),
+            default => $query,
+        };
+    }
+
+    /**
      * Join a listings query to the user's best pivot per listing, plus that
      * pivot's target profile. Callers supply their own select list.
      *
