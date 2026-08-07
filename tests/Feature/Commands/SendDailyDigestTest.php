@@ -134,7 +134,7 @@ it('includes ready and failed application updates', function () {
     });
 });
 
-it('includes shortlisted listings without applications', function () {
+it('includes shortlisted listings that have not been applied to', function () {
     $shortlisted = Listing::factory()->create();
     ListingUser::create([
         'listing_id' => $shortlisted->id,
@@ -145,18 +145,17 @@ it('includes shortlisted listings without applications', function () {
         'shortlisted_at' => now(),
     ]);
 
-    $withApp = Listing::factory()->create();
+    // Applying is what removes a listing from the "still to apply for" nudge —
+    // generating an AI draft is not, since drafts are optional and often unsent.
+    $applied = Listing::factory()->create();
     ListingUser::create([
-        'listing_id' => $withApp->id,
+        'listing_id' => $applied->id,
         'user_id' => $this->user->id,
         'target_profile_id' => $this->target->id,
         'relevance' => Relevance::Relevant,
         'scored_at' => now(),
         'shortlisted_at' => now(),
-    ]);
-    Application::factory()->for($withApp)->create([
-        'user_id' => $this->user->id,
-        'target_profile_id' => $this->target->id,
+        'applied_at' => now(),
     ]);
 
     $this->artisan('digest:send')->assertSuccessful();

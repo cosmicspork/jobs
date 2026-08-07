@@ -2,9 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Listings\Pages\ListListings;
-use App\Models\Application;
 use App\Models\ListingUser;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -49,14 +47,18 @@ class ListingStats extends StatsOverviewWidget
             ->selectRaw('SUM(CASE WHEN first_seen >= ? THEN 1 ELSE 0 END) as this_week', [$weekStart])
             ->first();
 
-        $awaiting = (int) ListingUser::query()
-            ->where('user_id', $userId)
-            ->whereNull('dismissed_at')
-            ->whereNotNull('shortlisted_at')
-            ->whereDoesntHave('listing.applications', fn ($q) => $q->where('user_id', $userId))
-            ->distinct()->count('listing_id');
+        $countIn = function (string $stage) use ($userId): int {
+            $query = ListingUser::query()
+                ->where('user_id', $userId)
+                ->whereNull('dismissed_at');
 
-        $applications = Application::where('user_id', $userId)->count();
+            ListingUser::applyStage($query, $stage);
+
+            return (int) $query->distinct()->count('listing_id');
+        };
+
+        $awaiting = $countIn('shortlisted');
+        $applied = $countIn('applied');
 
         return [
             Stat::make('Inbox', $inbox)
@@ -67,10 +69,10 @@ class ListingStats extends StatsOverviewWidget
                 ->description('Shortlisted, not yet applied')
                 ->color($awaiting > 0 ? 'warning' : 'gray')
                 ->url(ListListings::getUrl(['activeTab' => 'shortlisted'])),
-            Stat::make('Applications', $applications)
-                ->description('Resumes & cover letters generated')
+            Stat::make('Applied', $applied)
+                ->description('Marked as applied')
                 ->color('primary')
-                ->url(ApplicationResource::getUrl()),
+                ->url(ListListings::getUrl(['activeTab' => 'applied'])),
             Stat::make('New this week', (int) $volume->this_week)
                 ->description("Today: {$volume->today}")
                 ->color('gray')

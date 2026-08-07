@@ -56,7 +56,7 @@ it('displays listing stats', function () {
     Livewire::test(ListingStats::class)
         ->assertSee('Inbox')
         ->assertSee('Awaiting application')
-        ->assertSee('Applications')
+        ->assertSee('Applied')
         ->assertSee('New this week')
         ->assertSee('3')
         ->assertSee('5');

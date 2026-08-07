@@ -63,12 +63,23 @@ jobs:
 
       - run: composer install --no-interaction --prefer-dist
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # The panel registers a custom theme via viteTheme(), so the Vite manifest
+      # has to exist before any test renders a full page.
+      - run: npm run build
+
       - name: Prepare environment
         run: |
           cp .env.example .env
           php artisan key:generate
 
-      # Browser suite (tests/Browser) is excluded: it needs Playwright + built
-      # assets. Run it locally with `php artisan test --testsuite=Browser`.
+      # Browser suite (tests/Browser) is excluded: it needs Playwright.
+      # Run it locally with `php artisan test --testsuite=Browser`.
       - name: Run tests
         run: php artisan test --testsuite=default

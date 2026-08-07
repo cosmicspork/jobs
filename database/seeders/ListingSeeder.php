@@ -85,18 +85,27 @@ class ListingSeeder extends Seeder
                 'user_id' => $user->id,
                 'target_profile_id' => $target->id,
                 'relevance' => $relevance,
-                'score_data' => $this->scoreData(),
+                'score_data' => $this->scoreData($relevance),
                 'scored_at' => now(),
             ], $pivotExtras));
         }
     }
 
     /**
+     * Mirrors what ScoreListing writes, including the fit_score band each
+     * relevance tier implies — the reading room draws it, so seeded data
+     * without one renders nothing.
+     *
      * @return array<string, mixed>
      */
-    private function scoreData(): array
+    private function scoreData(Relevance $relevance = Relevance::Relevant): array
     {
         return [
+            'fit_score' => match ($relevance) {
+                Relevance::Relevant => fake()->numberBetween(75, 97),
+                Relevance::Maybe => fake()->numberBetween(55, 74),
+                Relevance::Irrelevant => fake()->numberBetween(12, 54),
+            },
             'matched_skills' => ['PHP', 'Laravel'],
             'gaps' => ['Go'],
             'reasoning' => 'Good match for a Laravel developer.',

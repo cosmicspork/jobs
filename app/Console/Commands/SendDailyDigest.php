@@ -141,7 +141,7 @@ class SendDailyDigest extends Command
             ->whereNull('digested_at')
             ->where('shortlisted_at', '>=', $since)
             ->with('listing')
-            ->whereDoesntHave('listing.applications', fn ($q) => $q->where('user_id', $user->id))
+            ->whereNull('applied_at')
             ->latest('shortlisted_at')
             ->get()
             ->unique('listing_id')

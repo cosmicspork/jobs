@@ -3,9 +3,7 @@
 namespace App\Filament\Resources\Listings\Pages;
 
 use App\Filament\Resources\Listings\ListingResource;
-use App\Models\Application;
 use App\Models\ListingUser;
-use App\Relevance;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -41,27 +39,28 @@ class ListListings extends ListRecords
             'inbox' => Tab::make('Inbox')
                 ->icon('heroicon-o-inbox')
                 ->badge($counts['inbox'] ?: null)
-                ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->whereNull('listing_user.read_at')
-                    ->whereIn('listing_user.relevance', [Relevance::Relevant, Relevance::Maybe])),
+                ->modifyQueryUsing(fn (Builder $query) => ListingUser::applyStage($query, 'inbox', 'listing_user.')),
             'starred' => Tab::make('Starred')
                 ->icon('heroicon-o-star')
                 ->badge($counts['starred'] ?: null)
-                ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->whereNotNull('listing_user.starred_at')
-                    ->orderByDesc('listing_user.starred_at')),
+                ->modifyQueryUsing(function (Builder $query) {
+                    ListingUser::applyStage($query, 'starred', 'listing_user.');
+                    $query->orderByDesc('listing_user.starred_at');
+                }),
             'shortlisted' => Tab::make('Shortlisted')
                 ->icon('heroicon-o-clipboard-document-check')
                 ->badge($counts['shortlisted'] ?: null)
-                ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->whereNotNull('listing_user.shortlisted_at')
-                    ->whereDoesntHave('applications', fn ($q) => $q->where('user_id', auth()->id()))),
+                ->modifyQueryUsing(function (Builder $query) {
+                    ListingUser::applyStage($query, 'shortlisted', 'listing_user.');
+                    $query->orderByDesc('listing_user.shortlisted_at');
+                }),
             'applied' => Tab::make('Applied')
                 ->icon('heroicon-o-check-circle')
                 ->badge($counts['applied'] ?: null)
-                ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->whereHas('applications', fn ($q) => $q->where('user_id', auth()->id()))
-                    ->orderByRaw('(select max(applied_at) from applications where applications.listing_id = listings.id and applications.user_id = ?) desc', [auth()->id()])),
+                ->modifyQueryUsing(function (Builder $query) {
+                    ListingUser::applyStage($query, 'applied', 'listing_user.');
+                    $query->orderByDesc('listing_user.applied_at');
+                }),
             'all' => Tab::make('All'),
         ];
     }
@@ -84,6 +83,9 @@ class ListListings extends ListRecords
             ->where('user_id', $userId)
             ->whereNull('dismissed_at')
             ->whereNull('read_at')
+            ->whereNull('starred_at')
+            ->whereNull('shortlisted_at')
+            ->whereNull('applied_at')
             ->selectRaw('listing_id')
             ->selectRaw('MIN('.ListingUser::orderByRelevanceSql().') as rank')
             ->groupBy('listing_id');
@@ -93,18 +95,23 @@ class ListListings extends ListRecords
             ->whereIn('rank', [0, 1])
             ->count();
 
-        $base = fn () => ListingUser::query()
-            ->where('user_id', $userId)
-            ->whereNull('dismissed_at');
+        $countIn = function (string $stage) use ($userId): int {
+            $query = ListingUser::query()
+                ->where('user_id', $userId)
+                ->whereNull('dismissed_at');
+
+            ListingUser::applyStage($query, $stage);
+
+            return (int) $query->distinct()->count('listing_id');
+        };
 
         return $this->tabCounts = [
             'inbox' => $inbox,
-            'starred' => (int) $base()->whereNotNull('starred_at')->distinct()->count('listing_id'),
-            'shortlisted' => (int) $base()
-                ->whereNotNull('shortlisted_at')
-                ->whereDoesntHave('listing.applications', fn ($q) => $q->where('user_id', $userId))
-                ->distinct()->count('listing_id'),
-            'applied' => (int) Application::where('user_id', $userId)->distinct()->count('listing_id'),
+            'starred' => $countIn('starred'),
+            'shortlisted' => $countIn('shortlisted'),
+            // Dismissed is excluded here as it is in every tab's query, so
+            // dismissing something you applied to also hides it from history.
+            'applied' => $countIn('applied'),
         ];
     }
 }

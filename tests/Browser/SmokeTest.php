@@ -1,6 +1,10 @@
 <?php
 
+use App\Models\Listing;
+use App\Models\ListingUser;
+use App\Models\TargetProfile;
 use App\Models\User;
+use App\Relevance;
 
 it('renders the login page without JS errors', function () {
     visit('/login')
@@ -52,5 +56,36 @@ it('renders the admin users page with invite action for an admin', function () {
 
     visit('/admin-users')
         ->assertSee('Invite User')
+        ->assertNoJavascriptErrors();
+});
+
+it('triages a listing from the reading room with the keyboard', function () {
+    $user = User::factory()->ic()->create([
+        'email' => 'triage@example.com',
+        'password' => bcrypt('password'),
+    ]);
+    $target = TargetProfile::factory()->for($user)->create();
+
+    foreach (['Alpha Engineer', 'Beta Engineer'] as $title) {
+        $listing = Listing::factory()->create(['title' => $title]);
+        ListingUser::create([
+            'listing_id' => $listing->id,
+            'user_id' => $user->id,
+            'target_profile_id' => $target->id,
+            'relevance' => Relevance::Relevant,
+            'score_data' => ['fit_score' => 80, 'gaps' => ['no kubernetes']],
+            'scored_at' => now(),
+        ]);
+    }
+
+    visit('/login')
+        ->fill('input[type="email"]', 'triage@example.com')
+        ->fill('input[type="password"]', 'password')
+        ->click('button[type="submit"]')
+        ->assertSee('Home');
+
+    visit('/reading-room')
+        ->assertSee('Alpha Engineer')
+        ->assertSee('no kubernetes')
         ->assertNoJavascriptErrors();
 });
