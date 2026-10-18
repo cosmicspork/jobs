@@ -1,4 +1,6 @@
-# jobs
+# laravel-job-aggregator
+
+> **Archived 2026-10.** Formerly `jobs`. A personal tool that has been retired and is no longer deployed. Kept as a reference for the board scrapers, LLM relevance scoring, and digest pipeline, and no longer maintained.
 
 A multi-user job aggregator and AI relevance scorer. Pulls postings from
 several boards, scores each one against your target profile(s) with an LLM,
@@ -46,8 +48,8 @@ Requires PHP 8.4, Composer 2, Node 20+, and Redis. A devcontainer is
 included if you'd rather not install these directly.
 
 ```bash
-git clone git@github.com:cosmicspork/jobs.git
-cd jobs
+git clone git@github.com:cosmicspork/laravel-job-aggregator.git
+cd laravel-job-aggregator
 composer run setup    # install, copy .env, key:generate, migrate, build assets
 ```
 
